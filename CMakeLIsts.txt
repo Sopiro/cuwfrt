@@ -1,0 +1,37 @@
+cmake_minimum_required(VERSION 3.27)
+
+project(cuda_test LANGUAGES CXX CUDA)
+
+# find cuda
+# see: https://cmake.org/cmake/help/latest/module/FindCUDAToolkit.html
+find_package(CUDAToolkit REQUIRED)
+
+add_executable(${PROJECT_NAME} main.cu)
+
+# set(CMAKE_CUDA_ARCHITECTURES 70 75 80) # Volta, Turing, Ampere
+
+set_target_properties(${SAMPLE_PROJECT} PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED YES
+    CXX_EXTENSIONS NO
+
+    CUDA_ARCHITECTURES native
+    CUDA_STANDARD 20
+    CUDA_STANDARD_REQUIRED YES
+)
+
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE 
+        $<$<COMPILE_LANGUAGE:CXX>:/WX /W4 /wd4819>
+    )
+
+    target_compile_options(${PROJECT_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
+        -Xcompiler=/wd4819
+        -Wno-deprecated-gpu-targets
+        >
+    )
+endif()
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
+
+target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::cudart)
