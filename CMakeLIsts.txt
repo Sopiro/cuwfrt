@@ -10,7 +10,7 @@ add_executable(${PROJECT_NAME} main.cu)
 
 # set(CMAKE_CUDA_ARCHITECTURES 70 75 80) # Volta, Turing, Ampere
 
-set_target_properties(${SAMPLE_PROJECT} PROPERTIES
+set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS NO

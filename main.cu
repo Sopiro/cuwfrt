@@ -25,9 +25,9 @@ int main(void)
     z = new float[N];
 
     // Allocate memory on device (GPU)
-    cudaMalloc(&d_x, N * sizeof(float));
-    cudaMalloc(&d_y, N * sizeof(float));
-    cudaMalloc(&d_z, N * sizeof(float));
+    checkCudaErrors(cudaMalloc(&d_x, N * sizeof(float)));
+    checkCudaErrors(cudaMalloc(&d_y, N * sizeof(float)));
+    checkCudaErrors(cudaMalloc(&d_z, N * sizeof(float)));
 
     // Initialize x and y arrays on the host (CPU)
     for (int i = 0; i < N; i++)
@@ -38,8 +38,8 @@ int main(void)
     }
 
     // Copy x and y arrays from host to device
-    cudaMemcpy(d_x, x, N * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_y, y, N * sizeof(float), cudaMemcpyHostToDevice);
+    checkCudaErrors(cudaMemcpy(d_x, x, N * sizeof(float), cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(d_y, y, N * sizeof(float), cudaMemcpyHostToDevice));
 
     int threads = 256; // More optimal thread count for modern GPUs
     int blocks = (N + threads - 1) / threads;
@@ -50,18 +50,13 @@ int main(void)
     add<<<blocks, threads>>>(N, d_x, d_y, d_z);
 
     // Check for kernel launch errors
-    cudaError_t error = cudaGetLastError();
-    if (error != cudaSuccess)
-    {
-        std::cout << "CUDA error: " << cudaGetErrorString(error) << std::endl;
-        return -1;
-    }
+    checkCudaErrors(cudaGetLastError());
 
     // Wait for GPU to finish before accessing on host
-    cudaDeviceSynchronize();
+    checkCudaErrors(cudaDeviceSynchronize());
 
     // Copy result from device to host
-    cudaMemcpy(z, d_z, N * sizeof(float), cudaMemcpyDeviceToHost);
+    checkCudaErrors(cudaMemcpy(z, d_z, N * sizeof(float), cudaMemcpyDeviceToHost));
 
     // Check for errors (all values should be 3.0f)
     float max_error = 0.0f;
@@ -73,9 +68,9 @@ int main(void)
     std::cout << "Max error: " << max_error << std::endl;
 
     // Free memory on device (GPU)
-    cudaFree(d_x);
-    cudaFree(d_y);
-    cudaFree(d_z);
+    checkCudaErrors(cudaFree(d_x));
+    checkCudaErrors(cudaFree(d_y));
+    checkCudaErrors(cudaFree(d_z));
 
     // Free memory on host (CPU)
     delete[] x;
