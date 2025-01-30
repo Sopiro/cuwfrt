@@ -1,5 +1,7 @@
 include(FetchContent)
 
+set(ALZARTAK_BUILD_SAMPLE OFF)
+
 # Include alzartak
 FetchContent_Declare(
     alzartak
@@ -42,4 +44,4 @@ endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::cudart)
+target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::cudart alzartak)
