@@ -1,155 +1,156 @@
-#if defined(_WIN32)
-#include <crtdbg.h>
-#endif
+#include "api.h"
 
-#include "alzartak/batch_renderer.h"
-#include "alzartak/camera.h"
-#include "alzartak/window.h"
+#include "alzartak/mesh.h"
+#include "alzartak/mesh_shader.h"
+
+#include <cuda_gl_interop.h>
+#include <cuda_runtime.h>
 
 using namespace alzartak;
 
-const float scale = 100.0f;
-float delta_time = 1.0f / 60.0f;
+GLFWwindow* window;
+const int WIDTH = 1280;
+const int HEIGHT = 720;
 
-Window* window;
-BatchRenderer* renderer;
-Camera2D* camera_2d;
-Camera3D* camera_3d;
+GLuint pbo, texture;
+cudaGraphicsResource* cuda_pbo;
 
-bool mode = true;
+// Fullscreen quad vertices
+const Vertex quad_vertices[4] = { { { -1.0f, -1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 0, 0 } },
+                                  { { 1.0f, -1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 1, 0 } },
+                                  { { -1.0f, 1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 0, 1 } },
+                                  { { 1.0f, 1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 1, 1 } } };
+const int32 quad_indices[6] = { 0, 1, 2, 2, 1, 3 };
 
-void UpdateProjectionMatrix()
+// CUDA Kernel: Writes colors to PBO
+__kernel__ void KernelRender(float3* pixels, int width, int height)
 {
-    Point2 extents = window->GetWindowSize();
-    extents /= scale;
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x >= width || y >= height)
+    {
+        return;
+    }
 
-    WakNotUsed(extents);
-    if (mode)
-    {
-        Mat4 proj_matrix = Mat4::Orth(-extents.x / 2, extents.x / 2, -extents.y / 2, extents.y / 2, -1000, 1000);
-        renderer->SetProjectionMatrix(proj_matrix);
-    }
-    else
-    {
-        Mat4 proj_matrix = Mat4::Perspective(DegToRad(71.0f), 16.0f / 9.0f, 0.01f, 1000.0f);
-        renderer->SetProjectionMatrix(proj_matrix);
-    }
+    int index = y * width + x;
+    pixels[index] = make_float3(x / (float)width, y / (float)height, 128 / 255.0f); // Simple gradient
 }
 
+// Render to the PBO using CUDA
+void RenderGPU()
+{
+    float3* device_ptr;
+    size_t size;
+    cudaGraphicsMapResources(1, &cuda_pbo);
+    cudaGraphicsResourceGetMappedPointer((void**)&device_ptr, &size, cuda_pbo);
+
+    const dim3 threads(8, 8);
+    const dim3 blocks((WIDTH + threads.x - 1) / threads.x, (HEIGHT + threads.y - 1) / threads.y);
+
+    KernelRender<<<blocks, threads>>>(device_ptr, WIDTH, HEIGHT);
+    cudaDeviceSynchronize();
+
+    cudaGraphicsUnmapResources(1, &cuda_pbo);
+}
+
+// Copy PBO data to texture
+void UpdateTexture()
+{
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WIDTH, HEIGHT, GL_RGB, GL_FLOAT, nullptr);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+}
+
+// OpenGL Rendering: Use PBO texture on a fullscreen quad
+void RenderQuad(Mesh& quad, MeshShader& shader)
+{
+    shader.Use();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    quad.Draw();
+}
+
+// Initialize PBO & CUDA Interop
 void Init()
 {
-    window = Window::Init(1280, 720, "alzartak");
-    renderer = new BatchRenderer;
+    // Create PBO
+    glGenBuffers(1, &pbo);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, WIDTH * HEIGHT * sizeof(float3), nullptr, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
-    camera_2d = new Camera2D;
-    camera_3d = new Camera3D;
+    // Register with CUDA
+    cudaGraphicsGLRegisterBuffer(&cuda_pbo, pbo, cudaGraphicsMapFlagsWriteDiscard);
 
-    // Enable culling
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
-
-    // Enable blend
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    UpdateProjectionMatrix();
-    window->SetFramebufferSizeChangeCallback([&](int32 width, int32 height) -> void {
-        glViewport(0, 0, width, height);
-        UpdateProjectionMatrix();
-    });
+    // Create texture
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH, HEIGHT, 0, GL_RGB, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void Terminate()
 {
-    delete camera_2d;
-    delete camera_3d;
-    delete renderer;
-}
-
-void Update()
-{
-    window->BeginFrame(Color::light_blue);
-    // ImGui::ShowDemoWindow();
-
-    ImGuiIO& io = ImGui::GetIO();
-
-    ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
-
-    if (ImGui::Begin("alzartak", NULL, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        ImGui::Text("%d fps", int32(io.Framerate));
-        if (ImGui::Checkbox("CameraMode 2D/3D", &mode))
-        {
-            UpdateProjectionMatrix();
-        }
-    }
-    ImGui::End();
-
-    // Camera control
-    {
-        if (mode)
-        {
-            camera_2d->UpdateInput(scale);
-            renderer->SetViewMatrix(camera_2d->GetCameraMatrix());
-        }
-        else
-        {
-            camera_3d->UpdateInput(delta_time);
-            renderer->SetViewMatrix(camera_3d->GetCameraMatrix());
-        }
-    }
-
-    // Rendering
-    renderer->SetPointSize(5);
-    renderer->SetLineWidth(2);
-    renderer->DrawLine({ 3, 0, -3 }, { 2, 1, -5 }, Vec4(1, 0, 1, 1));
-    renderer->DrawTriangle(
-        { { 0, 0, 0 }, Vec4(1, 0, 0, 1) }, { { 1, 0, -0.5f }, Vec4(0, 1, 0, 1) }, { { 0.5, 1.0, -1.0f }, Vec4(0, 0, 1, 1) }
-    );
-    renderer->DrawPoint({ -1, -1 }, Vec4(1, 0, 0, 1));
-
-    Vec3 m = Vec3(-2, 1, -1);
-    AABB a(m, m + Vec3(0.7f));
-
-    renderer->DrawAABB(a, Vec4(1, 1, 1, 0.5f));
-
-    renderer->FlushAll();
-
-    window->EndFrame();
+    cudaGraphicsUnregisterResource(cuda_pbo);
+    glDeleteBuffers(1, &pbo);
+    glDeleteTextures(1, &texture);
+    glfwDestroyWindow(window);
+    glfwTerminate();
 }
 
 int main()
 {
-#if defined(_WIN32) && defined(_DEBUG)
-    // Enable memory-leak reports
-    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-#endif
+    if (!glfwInit())
+    {
+        return -1;
+    }
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    window = glfwCreateWindow(WIDTH, HEIGHT, "cuda RTRT", nullptr, nullptr);
+    if (!window)
+    {
+        glfwTerminate();
+        return -1;
+    }
+    glfwMakeContextCurrent(window);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        return -1;
+    }
 
     Init();
 
-#ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop(Update, 0, 1);
-#else
-    auto last_time = std::chrono::steady_clock::now();
-    const float target_frame_time = 1.0f / window->GetRefreshRate();
+    // Create fullscreen quad mesh & shader
+    Mesh quad(quad_vertices, quad_indices);
 
-    while (!window->ShouldClose())
+    auto shader = MeshShader::Create();
+    shader->SetModelMatrix(identity);
+    shader->SetViewMatrix(identity);
+    shader->SetProjectionMatrix(identity);
+
+    // Main Loop
+    while (!glfwWindowShouldClose(window))
     {
-        auto current_time = std::chrono::steady_clock::now();
-        std::chrono::duration<float> duration = current_time - last_time;
-        float elapsed_time = duration.count();
-        last_time = current_time;
+        glfwPollEvents();
 
-        delta_time += elapsed_time;
-        if (delta_time > target_frame_time)
-        {
-            Update();
-            delta_time -= target_frame_time;
-        }
+        // Update PBO using CUDA
+        RenderGPU();
+        UpdateTexture();
+
+        // Render
+        glClear(GL_COLOR_BUFFER_BIT);
+        RenderQuad(quad, *shader);
+        glfwSwapBuffers(window);
     }
-#endif
 
+    // Cleanup
     Terminate();
 
     return 0;
