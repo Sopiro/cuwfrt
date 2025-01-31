@@ -2,20 +2,19 @@
 
 #include "alzartak/mesh.h"
 #include "alzartak/mesh_shader.h"
+#include "alzartak/window.h"
 
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 
 using namespace alzartak;
 
-GLFWwindow* window;
-const int WIDTH = 1280;
-const int HEIGHT = 720;
+Window* window;
+const Point2i resolution(1280, 720);
 
 GLuint pbo, texture;
 cudaGraphicsResource* cuda_pbo;
 
-// Fullscreen quad vertices
 const Vertex quad_vertices[4] = { { { -1.0f, -1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 0, 0 } },
                                   { { 1.0f, -1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 1, 0 } },
                                   { { -1.0f, 1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 0, 1 } },
@@ -23,31 +22,31 @@ const Vertex quad_vertices[4] = { { { -1.0f, -1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0,
 const int32 quad_indices[6] = { 0, 1, 2, 2, 1, 3 };
 
 // CUDA Kernel: Writes colors to PBO
-__kernel__ void KernelRender(float3* pixels, int width, int height)
+__kernel__ void KernelRender(Point3* pixels, Point2i res)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
-    if (x >= width || y >= height)
+    if (x >= res.x || y >= res.y)
     {
         return;
     }
 
-    int index = y * width + x;
-    pixels[index] = make_float3(x / (float)width, y / (float)height, 128 / 255.0f); // Simple gradient
+    int index = y * res.x + x;
+    pixels[index] = Point3(x / (float)res.x, y / (float)res.y, 128 / 255.0f); // Simple gradient
 }
 
 // Render to the PBO using CUDA
 void RenderGPU()
 {
-    float3* device_ptr;
+    Point3* device_ptr;
     size_t size;
     cudaGraphicsMapResources(1, &cuda_pbo);
     cudaGraphicsResourceGetMappedPointer((void**)&device_ptr, &size, cuda_pbo);
 
     const dim3 threads(8, 8);
-    const dim3 blocks((WIDTH + threads.x - 1) / threads.x, (HEIGHT + threads.y - 1) / threads.y);
+    const dim3 blocks((resolution.x + threads.x - 1) / threads.x, (resolution.y + threads.y - 1) / threads.y);
 
-    KernelRender<<<blocks, threads>>>(device_ptr, WIDTH, HEIGHT);
+    KernelRender<<<blocks, threads>>>(device_ptr, resolution);
     cudaDeviceSynchronize();
 
     cudaGraphicsUnmapResources(1, &cuda_pbo);
@@ -58,7 +57,7 @@ void UpdateTexture()
 {
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WIDTH, HEIGHT, GL_RGB, GL_FLOAT, nullptr);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, resolution.x, resolution.y, GL_RGB, GL_FLOAT, nullptr);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 }
 
@@ -71,13 +70,50 @@ void RenderQuad(Mesh& quad, MeshShader& shader)
     quad.Draw();
 }
 
+std::unique_ptr<Mesh> quad;
+std::unique_ptr<MeshShader> shader;
+
+void Update()
+{
+    window->BeginFrame(GL_COLOR_BUFFER_BIT);
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
+    if (ImGui::Begin("alzartak", NULL))
+    {
+        ImGui::Text("%d fps", int32(io.Framerate));
+    }
+    ImGui::End();
+
+    RenderGPU();
+    UpdateTexture();
+
+    RenderQuad(*quad, *shader);
+
+    window->EndFrame();
+}
+
 // Initialize PBO & CUDA Interop
 void Init()
 {
+    window = Window::Init(resolution.x, resolution.y, "cuda RTRT");
+
+    // Enable culling
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+
+    // Enable blend
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    window->SetFramebufferSizeChangeCallback([&](int32 width, int32 height) -> void { glViewport(0, 0, width, height); });
+
     // Create PBO
     glGenBuffers(1, &pbo);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-    glBufferData(GL_PIXEL_UNPACK_BUFFER, WIDTH * HEIGHT * sizeof(float3), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, resolution.x * resolution.y * sizeof(float3), nullptr, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
     // Register with CUDA
@@ -86,10 +122,18 @@ void Init()
     // Create texture
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH, HEIGHT, 0, GL_RGB, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, resolution.x, resolution.y, 0, GL_RGB, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    // Create fullscreen quad mesh & shader
+    quad = std::make_unique<Mesh>(quad_vertices, quad_indices);
+
+    shader = MeshShader::Create();
+    shader->SetModelMatrix(identity);
+    shader->SetViewMatrix(identity);
+    shader->SetProjectionMatrix(identity);
 }
 
 void Terminate()
@@ -97,60 +141,42 @@ void Terminate()
     cudaGraphicsUnregisterResource(cuda_pbo);
     glDeleteBuffers(1, &pbo);
     glDeleteTextures(1, &texture);
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    quad = nullptr;
+    shader = nullptr;
 }
 
 int main()
 {
-    if (!glfwInit())
-    {
-        return -1;
-    }
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    window = glfwCreateWindow(WIDTH, HEIGHT, "cuda RTRT", nullptr, nullptr);
-    if (!window)
-    {
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        return -1;
-    }
+#if defined(_WIN32) && defined(_DEBUG)
+    // Enable memory-leak reports
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
 
     Init();
 
-    // Create fullscreen quad mesh & shader
-    Mesh quad(quad_vertices, quad_indices);
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop(Update, 0, 1);
+#else
+    auto last_time = std::chrono::steady_clock::now();
+    const float target_frame_time = 1.0f / window->GetRefreshRate();
+    float delta_time = target_frame_time;
 
-    auto shader = MeshShader::Create();
-    shader->SetModelMatrix(identity);
-    shader->SetViewMatrix(identity);
-    shader->SetProjectionMatrix(identity);
-
-    // Main Loop
-    while (!glfwWindowShouldClose(window))
+    while (!window->ShouldClose())
     {
-        glfwPollEvents();
+        auto current_time = std::chrono::steady_clock::now();
+        std::chrono::duration<float> duration = current_time - last_time;
+        float elapsed_time = duration.count();
+        last_time = current_time;
 
-        // Update PBO using CUDA
-        RenderGPU();
-        UpdateTexture();
-
-        // Render
-        glClear(GL_COLOR_BUFFER_BIT);
-        RenderQuad(quad, *shader);
-        glfwSwapBuffers(window);
+        delta_time += elapsed_time;
+        if (delta_time > target_frame_time)
+        {
+            Update();
+            delta_time -= target_frame_time;
+        }
     }
+#endif
 
-    // Cleanup
     Terminate();
 
     return 0;
