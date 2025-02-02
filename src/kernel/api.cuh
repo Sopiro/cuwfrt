@@ -15,8 +15,13 @@
 #include <iostream>
 
 // https://developer.nvidia.com/blog/accelerated-ray-tracing-cuda
-#define checkCudaErrors(val) check_cuda((val), #val, __FILE__, __LINE__)
-void check_cuda(cudaError_t result, const char* const func, const char* const file, int const line)
+#ifdef BENCHMARK
+#define cudaCheck(val) (val)
+#else
+#define cudaCheck(val) cuda_check((val), #val, __FILE__, __LINE__)
+#endif
+
+void cuda_check(cudaError_t result, const char* const func, const char* const file, int const line)
 {
     if (result)
     {

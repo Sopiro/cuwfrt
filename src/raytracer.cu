@@ -17,7 +17,7 @@ RayTracer::RayTracer()
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
     // Register with CUDA
-    cudaGraphicsGLRegisterBuffer(&cuda_pbo, pbo, cudaGraphicsMapFlagsWriteDiscard);
+    cudaCheck(cudaGraphicsGLRegisterBuffer(&cuda_pbo, pbo, cudaGraphicsMapFlagsWriteDiscard));
 
     // Create texture
     glGenTextures(1, &texture);
@@ -30,7 +30,7 @@ RayTracer::RayTracer()
 
 RayTracer::~RayTracer()
 {
-    cudaGraphicsUnregisterResource(cuda_pbo);
+    cudaCheck(cudaGraphicsUnregisterResource(cuda_pbo));
     glDeleteBuffers(1, &pbo);
     glDeleteTextures(1, &texture);
 }
@@ -58,16 +58,18 @@ void RayTracer::RenderGPU()
     Point3* device_ptr;
     size_t size;
 
-    cudaGraphicsMapResources(1, &cuda_pbo);
-    cudaGraphicsResourceGetMappedPointer((void**)&device_ptr, &size, cuda_pbo);
+    cudaCheck(cudaGraphicsMapResources(1, &cuda_pbo));
+    cudaCheck(cudaGraphicsResourceGetMappedPointer((void**)&device_ptr, &size, cuda_pbo));
 
     const dim3 threads(8, 8);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
     RenderGradient<<<blocks, threads>>>(device_ptr, res);
-    cudaDeviceSynchronize();
+    cudaCheck(cudaGetLastError());
 
-    cudaGraphicsUnmapResources(1, &cuda_pbo);
+    cudaCheck(cudaDeviceSynchronize());
+
+    cudaCheck(cudaGraphicsUnmapResources(1, &cuda_pbo));
 }
 
 // Copy PBO data to texture
