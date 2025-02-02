@@ -1,0 +1,88 @@
+#include "raytracer.h"
+
+#include "alzartak/window.h"
+#include "kernel/kernels.cuh"
+
+#include <cuda_gl_interop.h>
+#include <cuda_runtime.h>
+
+RayTracer::RayTracer()
+{
+    res = Window::Get()->GetWindowSize();
+
+    // Create PBO
+    glGenBuffers(1, &pbo);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, res.x * res.y * sizeof(float3), nullptr, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+    // Register with CUDA
+    cudaGraphicsGLRegisterBuffer(&cuda_pbo, pbo, cudaGraphicsMapFlagsWriteDiscard);
+
+    // Create texture
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, res.x, res.y, 0, GL_RGB, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+RayTracer::~RayTracer()
+{
+    cudaGraphicsUnregisterResource(cuda_pbo);
+    glDeleteBuffers(1, &pbo);
+    glDeleteTextures(1, &texture);
+}
+
+void RayTracer::Update()
+{
+    ImGuiIO& io = ImGui::GetIO();
+
+    ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
+    if (ImGui::Begin("alzartak", NULL))
+    {
+        ImGui::Text("%dfps", int32(io.Framerate));
+    }
+    ImGui::End();
+
+    RenderGPU();
+    UpdateTexture();
+
+    RenderQuad();
+}
+
+// Render to the PBO using CUDA
+void RayTracer::RenderGPU()
+{
+    Point3* device_ptr;
+    size_t size;
+
+    cudaGraphicsMapResources(1, &cuda_pbo);
+    cudaGraphicsResourceGetMappedPointer((void**)&device_ptr, &size, cuda_pbo);
+
+    const dim3 threads(8, 8);
+    const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
+
+    RenderGradient<<<blocks, threads>>>(device_ptr, res);
+    cudaDeviceSynchronize();
+
+    cudaGraphicsUnmapResources(1, &cuda_pbo);
+}
+
+// Copy PBO data to texture
+void RayTracer::UpdateTexture()
+{
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, res.x, res.y, GL_RGB, GL_FLOAT, nullptr);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+}
+
+// OpenGL Rendering: Use PBO texture on a fullscreen quad
+void RayTracer::RenderQuad()
+{
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    qr.Draw();
+}
