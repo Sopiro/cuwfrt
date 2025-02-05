@@ -21,7 +21,7 @@
 #define cudaCheck(val) cuda_check((val), #val, __FILE__, __LINE__)
 #endif
 
-void cuda_check(cudaError_t result, const char* const func, const char* const file, int const line)
+inline void cuda_check(cudaError_t result, const char* const func, const char* const file, int const line)
 {
     if (result)
     {

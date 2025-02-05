@@ -1,4 +1,5 @@
 #include "raytracer.h"
+#include "scene.h"
 
 #include "alzartak/window.h"
 #include "kernel/kernels.cuh"
@@ -9,7 +10,8 @@
 namespace cuwfrt
 {
 
-RayTracer::RayTracer()
+RayTracer::RayTracer(Scene* scene)
+    : scene{ scene }
 {
     res = Window::Get()->GetWindowSize();
 
@@ -29,13 +31,30 @@ RayTracer::RayTracer()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    // Init GPU resources
+    InitGPUResources();
 }
 
 RayTracer::~RayTracer()
 {
+    FreeGPUResources();
+
     cudaCheck(cudaGraphicsUnregisterResource(cuda_pbo));
     glDeleteBuffers(1, &pbo);
     glDeleteTextures(1, &texture);
+}
+
+void RayTracer::InitGPUResources()
+{
+    std::cout << "Init gpu resources" << std::endl;
+    gpu_scene.Init(scene);
+}
+
+void RayTracer::FreeGPUResources()
+{
+    std::cout << "Free gpu resources" << std::endl;
+    gpu_scene.Free();
 }
 
 void RayTracer::Update()

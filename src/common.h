@@ -2,6 +2,6 @@
 
 #include <vector>
 
-#include "wak/vectors.h"
+#include "wak/math.h"
 
 using namespace wak;

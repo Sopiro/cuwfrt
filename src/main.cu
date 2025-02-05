@@ -10,6 +10,8 @@ namespace cuwfrt
 static Window* window;
 static RayTracer* raytracer;
 
+static Scene scene;
+
 void Update()
 {
     window->BeginFrame(GL_COLOR_BUFFER_BIT);
@@ -19,7 +21,7 @@ void Update()
     window->EndFrame();
 }
 
-// Initialize PBO & CUDA Interop
+// Initialize PBO & CUDA interop capability
 void Init()
 {
     window = Window::Init(1280, 720, "cuda RTRT");
@@ -35,7 +37,32 @@ void Init()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    raytracer = new RayTracer();
+    Material lambertian{};
+    lambertian.is_light = false;
+    lambertian.reflectance = Vec3(1);
+    lambertian.metallic = 0;
+    lambertian.roughness = 0;
+
+    MaterialIndex mi = scene.AddMaterial(lambertian);
+
+    Point3 p0 = { -0.5, -0.5, 0.0 };
+    Point3 p1 = { 0.5, -0.5, 0.0 };
+    Point3 p2 = { 0.5, 0.5, 0.0 };
+    Point3 p3 = { -0.5, 0.5, 0.0 };
+
+    Vertex v0{ p0, z_axis, x_axis, Point2(0.0, 0.0) };
+    Vertex v1{ p1, z_axis, x_axis, Point2(1.0, 0.0) };
+    Vertex v2{ p2, z_axis, x_axis, Point2(1.0, 1.0) };
+    Vertex v3{ p3, z_axis, x_axis, Point2(0.0, 1.0) };
+
+    auto vertices = std::vector<Vertex>{ v0, v1, v2, v3 };
+    auto indices = std::vector<int32>{ 0, 1, 2, 0, 2, 3 };
+
+    Mesh mesh(vertices, indices, identity);
+
+    scene.AddMesh(mesh, mi);
+
+    raytracer = new RayTracer(&scene);
 }
 
 void Terminate()
