@@ -6,6 +6,9 @@
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 
+namespace cuwfrt
+{
+
 RayTracer::RayTracer()
 {
     res = Window::Get()->GetWindowSize();
@@ -88,3 +91,5 @@ void RayTracer::RenderQuad()
     glBindTexture(GL_TEXTURE_2D, texture);
     qr.Draw();
 }
+
+} // namespace cuwfrt

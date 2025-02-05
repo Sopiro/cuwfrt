@@ -20,6 +20,10 @@ add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})
 
 # set(CMAKE_CUDA_ARCHITECTURES 70 75 80) # Volta, Turing, Ampere
 
+target_precompile_headers(${PROJECT_NAME} PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/common.h
+)
+
 set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED YES

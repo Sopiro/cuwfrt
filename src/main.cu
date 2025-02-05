@@ -2,6 +2,11 @@
 
 #include "alzartak/window.h"
 
+using namespace alzartak;
+
+namespace cuwfrt
+{
+
 static Window* window;
 static RayTracer* raytracer;
 
@@ -38,12 +43,16 @@ void Terminate()
     delete raytracer;
 }
 
+} // namespace cuwfrt
+
 int main()
 {
 #if defined(_WIN32) && defined(_DEBUG)
     // Enable memory-leak reports
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
+
+    using namespace cuwfrt;
 
     Init();
 

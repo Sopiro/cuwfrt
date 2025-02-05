@@ -2,6 +2,9 @@
 
 #include "quad_renderer.h"
 
+namespace cuwfrt
+{
+
 class RayTracer
 {
 public:
@@ -22,3 +25,5 @@ private:
 
     QuadRenderer qr;
 };
+
+} // namespace cuwfrt
