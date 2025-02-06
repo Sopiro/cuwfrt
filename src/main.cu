@@ -3,6 +3,7 @@
 #include "alzartak/camera.h"
 #include "alzartak/window.h"
 #include "builder.h"
+#include "parallel.h"
 
 using namespace alzartak;
 
@@ -66,6 +67,8 @@ void Update(Float dt)
 // Initialize PBO & CUDA interop capability
 void Init()
 {
+    ThreadPool::global_thread_pool.reset(new ThreadPool(std::thread::hardware_concurrency()));
+
     window = Window::Init(1280, 720, "cuda RTRT");
 
     // Enable culling
