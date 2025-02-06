@@ -36,7 +36,8 @@ private:
 
     GLuint pbo, texture;
     cudaGraphicsResource* cuda_pbo;
-    Vec4* device_ptr;
+    Vec4* d_sample_buffer;
+    Vec4* d_frame_buffer;
 
     QuadRenderer qr;
 

@@ -51,7 +51,9 @@ __kernel__ void RenderGradient(Vec4* pixels, Point2i res)
     pixels[index] = Vec4(x / (float)res.x, y / (float)res.y, 128 / 255.0f, 1.0f); // Simple gradient
 }
 
-__kernel__ void Render(Vec4* pixels, Point2i res, GPUScene scene, Camera camera, int32 tri_count, int32 time)
+__kernel__ void Render(
+    Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUScene scene, Camera camera, int32 tri_count, int32 time
+)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -113,8 +115,13 @@ __kernel__ void Render(Vec4* pixels, Point2i res, GPUScene scene, Camera camera,
         ++bounce;
     }
 
-    pixels[y * res.x + x] *= time;
-    pixels[y * res.x + x] += Vec4(r, 0);
-    pixels[y * res.x + x] /= time + 1.0f;
-    pixels[y * res.x + x].w = 1.0f;
+    int32 index = y * res.x + x;
+    sample_buffer[index] *= time;
+    sample_buffer[index] += Vec4(r, 0);
+    sample_buffer[index] /= time + 1.0f;
+
+    frame_buffer[index].x = std::pow(sample_buffer[index].x, 1 / 2.2f);
+    frame_buffer[index].y = std::pow(sample_buffer[index].y, 1 / 2.2f);
+    frame_buffer[index].z = std::pow(sample_buffer[index].z, 1 / 2.2f);
+    frame_buffer[index].w = 1.0f;
 }

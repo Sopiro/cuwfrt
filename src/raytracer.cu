@@ -59,12 +59,16 @@ void RayTracer::CreateFrameBuffer()
 
     size_t size;
     cudaCheck(cudaGraphicsMapResources(1, &cuda_pbo));
-    cudaCheck(cudaGraphicsResourceGetMappedPointer((void**)&device_ptr, &size, cuda_pbo));
+    cudaCheck(cudaGraphicsResourceGetMappedPointer((void**)&d_frame_buffer, &size, cuda_pbo));
     WakAssert(size == (res.x * res.y * sizeof(float4)));
+
+    cudaCheck(cudaMalloc(&d_sample_buffer, size));
 }
 
 void RayTracer::DeleteFrameBuffer()
 {
+    cudaCheck(cudaFree(d_sample_buffer));
+
     cudaCheck(cudaGraphicsUnmapResources(1, &cuda_pbo));
     cudaCheck(cudaGraphicsUnregisterResource(cuda_pbo));
     glDeleteBuffers(1, &pbo);
@@ -98,7 +102,7 @@ void RayTracer::RenderGPU()
     const dim3 threads(8, 8);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    Render<<<blocks, threads>>>(device_ptr, res, gpu_scene, *camera, int32(scene->indices.size()), time);
+    Render<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_scene, *camera, int32(scene->indices.size()), time);
 
     cudaCheck(cudaGetLastError());
     cudaCheck(cudaDeviceSynchronize());
