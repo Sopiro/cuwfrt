@@ -18,7 +18,7 @@ public:
     RayTracer(Window* window, Scene* scene, Camera* camera);
     ~RayTracer();
 
-    void Update();
+    void Update(int32 time);
 
 private:
     void InitGPUResources();
@@ -36,7 +36,7 @@ private:
 
     GLuint pbo, texture;
     cudaGraphicsResource* cuda_pbo;
-    float4* device_ptr;
+    Vec4* device_ptr;
 
     QuadRenderer qr;
 
@@ -44,6 +44,8 @@ private:
     Camera* camera;
 
     GPUScene gpu_scene;
+
+    int32 time;
 };
 
 } // namespace cuwfrt

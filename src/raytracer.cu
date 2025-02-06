@@ -1,5 +1,5 @@
 #include "kernels.cuh"
-#include "raytracer.h"
+#include "raytracer.cuh"
 #include "scene.h"
 
 #include <cuda_gl_interop.h>
@@ -36,10 +36,12 @@ RayTracer::~RayTracer()
 
 void RayTracer::CreateFrameBuffer()
 {
+    WakAssert(sizeof(float4) == sizeof(Vec4f));
+
     // Create PBO
     glGenBuffers(1, &pbo);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-    glBufferData(GL_PIXEL_UNPACK_BUFFER, res.x * res.y * sizeof(float4), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, res.x * res.y * sizeof(Vec4f), nullptr, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
     // Register with CUDA
@@ -81,8 +83,10 @@ void RayTracer::FreeGPUResources()
     gpu_scene.Free();
 }
 
-void RayTracer::Update()
+void RayTracer::Update(int32 t)
 {
+    time = t;
+
     RenderGPU();
     UpdateTexture();
     RenderQuad();
@@ -94,9 +98,9 @@ void RayTracer::RenderGPU()
     const dim3 threads(8, 8);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    Render<<<blocks, threads>>>(device_ptr, res, gpu_scene, *camera, int32(scene->indices.size()));
-    cudaCheck(cudaGetLastError());
+    Render<<<blocks, threads>>>(device_ptr, res, gpu_scene, *camera, int32(scene->indices.size()), time);
 
+    cudaCheck(cudaGetLastError());
     cudaCheck(cudaDeviceSynchronize());
 }
 

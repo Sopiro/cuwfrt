@@ -9,8 +9,6 @@ struct Material
 {
     bool is_light;
     Vec3 reflectance;
-    float roughness;
-    float metallic;
 };
 
 } // namespace cuwfrt

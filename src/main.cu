@@ -17,7 +17,8 @@ static Camera camera;
 
 static Camera3D player;
 
-// 카메라가 바라보는 forward 벡터를 계산하는 함수
+static int32 time = 0;
+
 static Vec3 GetForward()
 {
     float pitch = player.rotation.x;
@@ -28,12 +29,13 @@ static Vec3 GetForward()
     forward.y = -std::sin(pitch);
     forward.z = std::cos(pitch) * std::cos(yaw);
 
-    // 필요에 따라 정규화 (길이가 1이 되도록)
     return Normalize(forward);
 }
 
 void Update(Float dt)
 {
+    ++time;
+
     window->BeginFrame(GL_COLOR_BUFFER_BIT);
 
     ImGuiIO& io = ImGui::GetIO();
@@ -41,14 +43,22 @@ void Update(Float dt)
     ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
     if (ImGui::Begin("alzartak", NULL))
     {
-        ImGui::Text("%dfps", int32(io.Framerate));
+        ImGui::Text("%d fps", int32(io.Framerate));
+        ImGui::Text("%d samples", time);
     }
     ImGui::End();
 
-    player.UpdateInput(dt);
+    if (player.UpdateInput(dt))
+    {
+        if (Length2(player.velocity) < 0.5f)
+        {
+            player.velocity.SetZero();
+        }
+        time = 0;
+    }
 
     camera = Camera(player.position, GetForward(), y_axis, 71, 0.0f, 1.0f, window->GetWindowSize());
-    raytracer->Update();
+    raytracer->Update(time);
 
     window->EndFrame();
 }
@@ -70,6 +80,7 @@ void Init()
     MaterialIndex white = scene.AddMaterial({ .reflectance{ .73f, .73f, .73f } });
     MaterialIndex red = scene.AddMaterial({ .reflectance{ .65f, .05f, .05f } });
     MaterialIndex green = scene.AddMaterial({ .reflectance{ .12f, .45f, .15f } });
+    MaterialIndex light = scene.AddMaterial({ .is_light{ true }, .reflectance{ 15.0f, 15.0f, 15.0f } });
 
     // The Cornell box
     {
@@ -109,14 +120,20 @@ void Init()
             Float hy = 0.14f;
             Float hz = 0.14f;
 
-            // auto mat = scene.CreateMaterial<ThinDielectricMaterial>(1.5f);
-
             tf = Transform{ 0.66f, hy, -0.33f, Quat(DegToRad(-18.0f), y_axis), Vec3(hx * 2.0f, hy * 2.0f, hz * 2.0f) };
             CreateBox(scene, tf, white);
         }
+
+        // Lights
+        {
+            tf = Transform{ 0.5f, 0.995f, -0.5f, Quat(pi, x_axis), Vec3(0.25f) };
+            CreateRectXZ(scene, tf, light);
+        }
     }
 
-    player.position.Set(0.5f, 0.5f, 2.05f);
+    player.position.Set(0.5f, 0.5f, 1.0f);
+    player.speed = 1.5f;
+    player.damping = 100.0f;
     raytracer = new RayTracer(window, &scene, &camera);
 }
 
@@ -153,7 +170,7 @@ int main()
         if (delta_time > target_frame_time)
         {
             Update(delta_time);
-            delta_time -= target_frame_time;
+            delta_time = 0;
         }
     }
 

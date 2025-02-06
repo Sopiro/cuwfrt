@@ -4,7 +4,9 @@
 #include "wak/random.h"
 
 #include "api.cuh"
+#include "frame.h"
 #include "gpu_scene.cuh"
+#include "sampling.h"
 #include "triangle.cuh"
 
 #include "camera.h"
@@ -12,30 +14,10 @@
 using namespace cuwfrt;
 using namespace wak;
 
-__kernel__ void RenderGradient(float4* pixels, Point2i res)
+__gpu__ bool Intersect(Intersection* closest, MaterialIndex* mi, const GPUScene& scene, Ray ray, int32 tri_count)
 {
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
-    if (x >= res.x || y >= res.y) return;
-
-    int index = y * res.x + x;
-    pixels[index] = make_float4(x / (float)res.x, y / (float)res.y, 128 / 255.0f, 1.0f); // Simple gradient
-}
-
-__kernel__ void Render(float4* pixels, Point2i res, GPUScene scene, Camera camera, int32 tri_count)
-{
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
-    if (x >= res.x || y >= res.y) return;
-
-    RNG rng(Hash(x, y));
-
-    Ray ray;
-    camera.SampleRay(&ray, Point2i(x, y), { rng.NextFloat(), rng.NextFloat() }, { rng.NextFloat(), rng.NextFloat() });
-
     bool found_intersection = false;
-    MaterialIndex mi;
-    Intersection closest{ .t = infinity };
+    closest->t = infinity;
 
     for (int32 i = 0; i < tri_count; ++i)
     {
@@ -48,22 +30,78 @@ __kernel__ void Render(float4* pixels, Point2i res, GPUScene scene, Camera camer
         if (TriangleIntersect(&isect, p0, p1, p2, ray, Ray::epsilon, infinity))
         {
             found_intersection = true;
-            if (isect.t < closest.t)
+            if (isect.t < closest->t)
             {
-                mi = scene.material_indices[i];
-                closest = isect;
+                *closest = isect;
+                *mi = scene.material_indices[i];
             }
         }
     }
 
-    if (found_intersection)
+    return found_intersection;
+}
+
+__kernel__ void RenderGradient(Vec4* pixels, Point2i res)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x >= res.x || y >= res.y) return;
+
+    int index = y * res.x + x;
+    pixels[index] = Vec4(x / (float)res.x, y / (float)res.y, 128 / 255.0f, 1.0f); // Simple gradient
+}
+
+__kernel__ void Render(Vec4* pixels, Point2i res, GPUScene scene, Camera camera, int32 tri_count, int32 time)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x >= res.x || y >= res.y) return;
+
+    RNG rng(Hash(x, y, time));
+
+    Ray ray;
+    camera.SampleRay(&ray, Point2i(x, y), { rng.NextFloat(), rng.NextFloat() }, { rng.NextFloat(), rng.NextFloat() });
+
+    Vec3 throughput(1);
+    Vec3 r(0);
+
+    int32 bounce = 0;
+    while (bounce < 5)
     {
-        Vec3 albedo = scene.materials[mi].reflectance;
-        pixels[y * res.x + x] = float4(albedo.x, albedo.y, albedo.z, 1.0f);
-        // pixels[y * res.x + x] = float4(closest.normal.x / 2 + 0.5, closest.normal.y / 2 + 0.5, closest.normal.z / 2 + 0.5, 1);
+        Intersection isect;
+        MaterialIndex mi;
+        bool found_intersection = Intersect(&isect, &mi, scene, ray, tri_count);
+
+        if (found_intersection)
+        {
+            Material& m = scene.materials[mi];
+            if (m.is_light)
+            {
+                r += throughput * m.reflectance;
+                break;
+            }
+            else
+            {
+                throughput *= m.reflectance;
+            }
+        }
+        else
+        {
+            break;
+        }
+
+        Frame f(isect.normal);
+        Vec3 wi = SampleCosineHemisphere({ rng.NextFloat(), rng.NextFloat() });
+        wi = f.FromLocal(wi);
+
+        ray.o = isect.point;
+        ray.d = wi;
+
+        ++bounce;
     }
-    else
-    {
-        pixels[y * res.x + x] = float4(0, 0, 0, 1);
-    }
+
+    pixels[y * res.x + x] *= time;
+    pixels[y * res.x + x] += Vec4(r, 0);
+    pixels[y * res.x + x] /= time + 1.0f;
+    pixels[y * res.x + x].w = 1.0f;
 }
