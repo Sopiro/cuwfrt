@@ -11,6 +11,7 @@ static Window* window;
 static RayTracer* raytracer;
 
 static Scene scene;
+static Camera camera;
 
 void Update()
 {
@@ -62,7 +63,16 @@ void Init()
 
     scene.AddMesh(mesh, mi);
 
-    raytracer = new RayTracer(&scene);
+    Point3 lookfrom{ 0.5f, 0.5f, 2.05f };
+    Point3 lookat{ 0.5f, 0.5f, 0.0f };
+
+    Float dist_to_focus = Dist(lookfrom, lookat);
+    Float aperture = 0.0f;
+    Float vFov = 28.0f;
+
+    camera = Camera(lookfrom, lookat, y_axis, vFov, aperture, dist_to_focus, window->GetWindowSize());
+
+    raytracer = new RayTracer(&scene, &camera);
 }
 
 void Terminate()

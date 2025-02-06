@@ -1,5 +1,6 @@
 #pragma once
 
+#include "camera.h"
 #include "gpu_scene.cuh"
 #include "quad_renderer.h"
 #include "scene.h"
@@ -12,7 +13,7 @@ class Scene;
 class RayTracer
 {
 public:
-    RayTracer(Scene* scene);
+    RayTracer(Scene* scene, Camera* camera);
     ~RayTracer();
 
     void Update();
@@ -33,6 +34,8 @@ private:
     QuadRenderer qr;
 
     Scene* scene;
+    Camera* camera;
+
     GPUScene gpu_scene;
 };
 

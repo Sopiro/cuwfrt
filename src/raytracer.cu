@@ -10,8 +10,9 @@
 namespace cuwfrt
 {
 
-RayTracer::RayTracer(Scene* scene)
+RayTracer::RayTracer(Scene* scene, Camera* camera)
     : scene{ scene }
+    , camera{ camera }
 {
     res = Window::Get()->GetWindowSize();
 
@@ -49,13 +50,13 @@ RayTracer::~RayTracer()
 
 void RayTracer::InitGPUResources()
 {
-    std::cout << "Init gpu resources" << std::endl;
+    std::cout << "Init GPU resources" << std::endl;
     gpu_scene.Init(scene);
 }
 
 void RayTracer::FreeGPUResources()
 {
-    std::cout << "Free gpu resources" << std::endl;
+    std::cout << "Free GPU resources" << std::endl;
     gpu_scene.Free();
 }
 
@@ -88,7 +89,7 @@ void RayTracer::RenderGPU()
     const dim3 threads(8, 8);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    RenderGradient<<<blocks, threads>>>(device_ptr, res);
+    Render<<<blocks, threads>>>(device_ptr, res, *camera);
     cudaCheck(cudaGetLastError());
 
     cudaCheck(cudaDeviceSynchronize());
