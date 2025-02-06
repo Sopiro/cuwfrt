@@ -1,4 +1,4 @@
-#include "raytracer.h"
+#include "raytracer.cuh"
 
 #include "alzartak/camera.h"
 #include "alzartak/window.h"
