@@ -1,7 +1,7 @@
 #pragma once
 
+#include "api.cuh"
 #include "common.h"
-#include "kernel/api.cuh"
 #include "wak/ray.h"
 
 namespace cuwfrt

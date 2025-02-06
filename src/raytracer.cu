@@ -2,7 +2,7 @@
 #include "scene.h"
 
 #include "alzartak/window.h"
-#include "kernel/kernels.cuh"
+#include "kernels.cuh"
 
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>

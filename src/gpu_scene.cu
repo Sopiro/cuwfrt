@@ -1,4 +1,4 @@
-#include "kernel/api.cuh"
+#include "api.cuh"
 
 #include "gpu_scene.cuh"
 #include "scene.h"

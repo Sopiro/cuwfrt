@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../camera.h"
 #include "api.cuh"
+#include "camera.h"
 #include "wak/hash.h"
 #include "wak/random.h"
 

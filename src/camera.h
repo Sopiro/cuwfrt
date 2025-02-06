@@ -1,8 +1,8 @@
 #pragma once
 
+#include "api.cuh"
 #include "common.h"
 #include "filters.h"
-#include "kernel/api.cuh"
 #include "sampling.h"
 
 namespace cuwfrt
