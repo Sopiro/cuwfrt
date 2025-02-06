@@ -14,15 +14,16 @@ class Camera
 public:
     Camera() = default;
     Camera(
-        const Point3& look_from,
-        const Point3& look_at,
+        const Point3& position,
+        const Point3& forward,
         const Vec3& up,
         Float vfov, // vertical field-of-view. in degrees.
         Float aperture,
         Float focus_dist,
         const Point2i& resolution
     )
-        : resolution{ resolution }
+        : origin{ position }
+        , resolution{ resolution }
     {
         Float theta = DegToRad(vfov);
         Float h = std::tan(theta / 2);
@@ -30,11 +31,10 @@ public:
         Float viewport_height = 2 * h;
         Float viewport_width = aspect_ratio * viewport_height;
 
-        w = Normalize(look_from - look_at);
+        w = Normalize(forward);
         u = Normalize(Cross(up, w));
         v = Cross(w, u);
 
-        origin = look_from;
         horizontal = focus_dist * viewport_width * u;
         vertical = focus_dist * viewport_height * v;
         lower_left = origin - horizontal / 2 - vertical / 2 - focus_dist * w;

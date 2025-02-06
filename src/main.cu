@@ -15,10 +15,30 @@ static RayTracer* raytracer;
 static Scene scene;
 static Camera camera;
 
+static Camera3D player;
+
+// 카메라가 바라보는 forward 벡터를 계산하는 함수
+static Vec3 GetForward()
+{
+    float pitch = player.rotation.x;
+    float yaw = player.rotation.y;
+
+    Vec3 forward;
+    forward.x = std::cos(pitch) * std::sin(yaw);
+    forward.y = -std::sin(pitch);
+    forward.z = std::cos(pitch) * std::cos(yaw);
+
+    // 필요에 따라 정규화 (길이가 1이 되도록)
+    return Normalize(forward);
+}
+
 void Update(Float dt)
 {
     window->BeginFrame(GL_COLOR_BUFFER_BIT);
 
+    player.UpdateInput(dt);
+
+    camera = Camera(player.position, GetForward(), y_axis, 71, 0.0f, 1.0f, window->GetWindowSize());
     raytracer->Update();
 
     window->EndFrame();
@@ -96,7 +116,7 @@ void Init()
     Float aperture = 0.0f;
     Float vFov = 71.0f;
 
-    camera = Camera(lookfrom, lookat, y_axis, vFov, aperture, dist_to_focus, window->GetWindowSize());
+    camera = Camera(lookfrom, lookat - lookfrom, y_axis, vFov, aperture, dist_to_focus, window->GetWindowSize());
 
     raytracer = new RayTracer(&scene, &camera);
 }
