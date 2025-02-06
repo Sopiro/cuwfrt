@@ -36,6 +36,15 @@ void Update(Float dt)
 {
     window->BeginFrame(GL_COLOR_BUFFER_BIT);
 
+    ImGuiIO& io = ImGui::GetIO();
+
+    ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
+    if (ImGui::Begin("alzartak", NULL))
+    {
+        ImGui::Text("%dfps", int32(io.Framerate));
+    }
+    ImGui::End();
+
     player.UpdateInput(dt);
 
     camera = Camera(player.position, GetForward(), y_axis, 71, 0.0f, 1.0f, window->GetWindowSize());
@@ -48,8 +57,6 @@ void Update(Float dt)
 void Init()
 {
     window = Window::Init(1280, 720, "cuda RTRT");
-
-    window->SetFramebufferSizeChangeCallback([&](int32 width, int32 height) -> void { glViewport(0, 0, width, height); });
 
     // Enable culling
     glEnable(GL_CULL_FACE);
@@ -109,16 +116,8 @@ void Init()
         }
     }
 
-    Point3 lookfrom{ 0.5f, 0.5f, 2.05f };
-    Point3 lookat{ 0.5f, 0.5f, 0.0f };
-
-    Float dist_to_focus = Dist(lookfrom, lookat);
-    Float aperture = 0.0f;
-    Float vFov = 71.0f;
-
-    camera = Camera(lookfrom, lookat - lookfrom, y_axis, vFov, aperture, dist_to_focus, window->GetWindowSize());
-
-    raytracer = new RayTracer(&scene, &camera);
+    player.position.Set(0.5f, 0.5f, 2.05f);
+    raytracer = new RayTracer(window, &scene, &camera);
 }
 
 void Terminate()

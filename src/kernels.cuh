@@ -34,6 +34,7 @@ __kernel__ void Render(float4* pixels, Point2i res, GPUScene scene, Camera camer
     camera.SampleRay(&ray, Point2i(x, y), { rng.NextFloat(), rng.NextFloat() }, { rng.NextFloat(), rng.NextFloat() });
 
     bool found_intersection = false;
+    MaterialIndex mi;
     Intersection closest{ .t = infinity };
 
     for (int32 i = 0; i < tri_count; ++i)
@@ -49,6 +50,7 @@ __kernel__ void Render(float4* pixels, Point2i res, GPUScene scene, Camera camer
             found_intersection = true;
             if (isect.t < closest.t)
             {
+                mi = scene.material_indices[i];
                 closest = isect;
             }
         }
@@ -56,7 +58,9 @@ __kernel__ void Render(float4* pixels, Point2i res, GPUScene scene, Camera camer
 
     if (found_intersection)
     {
-        pixels[y * res.x + x] = float4(closest.normal.x / 2 + 0.5, closest.normal.y / 2 + 0.5, closest.normal.z / 2 + 0.5, 1);
+        Vec3 albedo = scene.materials[mi].reflectance;
+        pixels[y * res.x + x] = float4(albedo.x, albedo.y, albedo.z, 1.0f);
+        // pixels[y * res.x + x] = float4(closest.normal.x / 2 + 0.5, closest.normal.y / 2 + 0.5, closest.normal.z / 2 + 0.5, 1);
     }
     else
     {

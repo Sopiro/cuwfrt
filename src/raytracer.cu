@@ -1,8 +1,6 @@
+#include "kernels.cuh"
 #include "raytracer.h"
 #include "scene.h"
-
-#include "alzartak/window.h"
-#include "kernels.cuh"
 
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
@@ -10,12 +8,34 @@
 namespace cuwfrt
 {
 
-RayTracer::RayTracer(Scene* scene, Camera* camera)
-    : scene{ scene }
+RayTracer::RayTracer(Window* window, Scene* scene, Camera* camera)
+    : window{ window }
+    , scene{ scene }
     , camera{ camera }
 {
-    res = Window::Get()->GetWindowSize();
+    res = window->GetWindowSize();
 
+    window->SetFramebufferSizeChangeCallback([&](int32 width, int32 height) -> void {
+        glViewport(0, 0, width, height);
+        res.Set(width, height);
+
+        // Recreate framebuffer
+        DeleteFrameBuffer();
+        CreateFrameBuffer();
+    });
+
+    CreateFrameBuffer();
+    InitGPUResources();
+}
+
+RayTracer::~RayTracer()
+{
+    FreeGPUResources();
+    DeleteFrameBuffer();
+}
+
+void RayTracer::CreateFrameBuffer()
+{
     // Create PBO
     glGenBuffers(1, &pbo);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
@@ -35,14 +55,15 @@ RayTracer::RayTracer(Scene* scene, Camera* camera)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    // Init GPU resources
-    InitGPUResources();
+    size_t size;
+    cudaCheck(cudaGraphicsMapResources(1, &cuda_pbo));
+    cudaCheck(cudaGraphicsResourceGetMappedPointer((void**)&device_ptr, &size, cuda_pbo));
+    WakAssert(size == (res.x * res.y * sizeof(float4)));
 }
 
-RayTracer::~RayTracer()
+void RayTracer::DeleteFrameBuffer()
 {
-    FreeGPUResources();
-
+    cudaCheck(cudaGraphicsUnmapResources(1, &cuda_pbo));
     cudaCheck(cudaGraphicsUnregisterResource(cuda_pbo));
     glDeleteBuffers(1, &pbo);
     glDeleteTextures(1, &texture);
@@ -62,30 +83,14 @@ void RayTracer::FreeGPUResources()
 
 void RayTracer::Update()
 {
-    ImGuiIO& io = ImGui::GetIO();
-
-    ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
-    if (ImGui::Begin("alzartak", NULL))
-    {
-        ImGui::Text("%dfps", int32(io.Framerate));
-    }
-    ImGui::End();
-
     RenderGPU();
     UpdateTexture();
-
     RenderQuad();
 }
 
 // Render to the PBO using CUDA
 void RayTracer::RenderGPU()
 {
-    float4* device_ptr;
-    size_t size;
-
-    cudaCheck(cudaGraphicsMapResources(1, &cuda_pbo));
-    cudaCheck(cudaGraphicsResourceGetMappedPointer((void**)&device_ptr, &size, cuda_pbo));
-
     const dim3 threads(8, 8);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
@@ -93,8 +98,6 @@ void RayTracer::RenderGPU()
     cudaCheck(cudaGetLastError());
 
     cudaCheck(cudaDeviceSynchronize());
-
-    cudaCheck(cudaGraphicsUnmapResources(1, &cuda_pbo));
 }
 
 // Copy PBO data to texture

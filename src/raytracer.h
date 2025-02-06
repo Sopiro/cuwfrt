@@ -1,5 +1,7 @@
 #pragma once
 
+#include "alzartak/window.h"
+
 #include "camera.h"
 #include "gpu_scene.cuh"
 #include "quad_renderer.h"
@@ -13,7 +15,7 @@ class Scene;
 class RayTracer
 {
 public:
-    RayTracer(Scene* scene, Camera* camera);
+    RayTracer(Window* window, Scene* scene, Camera* camera);
     ~RayTracer();
 
     void Update();
@@ -22,14 +24,19 @@ private:
     void InitGPUResources();
     void FreeGPUResources();
 
+    void CreateFrameBuffer();
+    void DeleteFrameBuffer();
+
     void RenderGPU();
     void UpdateTexture();
     void RenderQuad();
 
+    Window* window;
     Point2i res;
 
     GLuint pbo, texture;
     cudaGraphicsResource* cuda_pbo;
+    float4* device_ptr;
 
     QuadRenderer qr;
 
