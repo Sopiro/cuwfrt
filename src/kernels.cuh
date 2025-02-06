@@ -14,7 +14,7 @@
 using namespace cuwfrt;
 using namespace wak;
 
-__gpu__ bool Intersect(Intersection* closest, MaterialIndex* mi, const GPUScene& scene, Ray ray, int32 tri_count)
+__gpu__ bool Intersect(Intersection* closest, const GPUScene& scene, Ray ray, int32 tri_count)
 {
     bool found_intersection = false;
     closest->t = infinity;
@@ -32,8 +32,8 @@ __gpu__ bool Intersect(Intersection* closest, MaterialIndex* mi, const GPUScene&
             found_intersection = true;
             if (isect.t < closest->t)
             {
+                isect.index = i;
                 *closest = isect;
-                *mi = scene.material_indices[i];
             }
         }
     }
@@ -66,14 +66,14 @@ __kernel__ void Render(Vec4* pixels, Point2i res, GPUScene scene, Camera camera,
     Vec3 r(0);
 
     int32 bounce = 0;
-    while (bounce < 5)
+    while (bounce < 10)
     {
         Intersection isect;
-        MaterialIndex mi;
-        bool found_intersection = Intersect(&isect, &mi, scene, ray, tri_count);
+        bool found_intersection = Intersect(&isect, scene, ray, tri_count);
 
         if (found_intersection)
         {
+            MaterialIndex mi = scene.material_indices[isect.index];
             Material& m = scene.materials[mi];
             if (m.is_light)
             {
@@ -88,6 +88,19 @@ __kernel__ void Render(Vec4* pixels, Point2i res, GPUScene scene, Camera camera,
         else
         {
             break;
+        }
+
+        if (bounce > 2)
+        {
+            Float rr = fmin(1.0f, fmax(throughput.x, fmax(throughput.y, throughput.z)));
+            if (rng.NextFloat() < rr)
+            {
+                throughput /= rr;
+            }
+            else
+            {
+                break;
+            }
         }
 
         Frame f(isect.normal);

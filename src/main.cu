@@ -77,6 +77,8 @@ void Init()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    glEnable(GL_FRAMEBUFFER_SRGB);
+
     MaterialIndex white = scene.AddMaterial({ .reflectance{ .73f, .73f, .73f } });
     MaterialIndex red = scene.AddMaterial({ .reflectance{ .65f, .05f, .05f } });
     MaterialIndex green = scene.AddMaterial({ .reflectance{ .12f, .45f, .15f } });
