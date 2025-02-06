@@ -1,6 +1,8 @@
 #include "raytracer.h"
 
+#include "alzartak/camera.h"
 #include "alzartak/window.h"
+#include "builder.h"
 
 using namespace alzartak;
 
@@ -13,7 +15,7 @@ static RayTracer* raytracer;
 static Scene scene;
 static Camera camera;
 
-void Update()
+void Update(Float dt)
 {
     window->BeginFrame(GL_COLOR_BUFFER_BIT);
 
@@ -38,37 +40,61 @@ void Init()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    Material lambertian{};
-    lambertian.is_light = false;
-    lambertian.reflectance = Vec3(1);
-    lambertian.metallic = 0;
-    lambertian.roughness = 0;
+    MaterialIndex white = scene.AddMaterial({ .reflectance{ .73f, .73f, .73f } });
+    MaterialIndex red = scene.AddMaterial({ .reflectance{ .65f, .05f, .05f } });
+    MaterialIndex green = scene.AddMaterial({ .reflectance{ .12f, .45f, .15f } });
 
-    MaterialIndex mi = scene.AddMaterial(lambertian);
+    // The Cornell box
+    {
+        // front
+        auto tf = Transform{ Vec3(0.5f, 0.5f, -1.0f), identity, Vec3(1.0f) };
+        CreateRectXY(scene, tf, white);
 
-    Point3 p0 = { -0.5, -0.5, 0.0 };
-    Point3 p1 = { 0.5, -0.5, 0.0 };
-    Point3 p2 = { 0.5, 0.5, 0.0 };
-    Point3 p3 = { -0.5, 0.5, 0.0 };
+        // left
+        tf = Transform{ Vec3(0.0f, 0.5f, -0.5f), identity, Vec3(1.0f) };
+        CreateRectYZ(scene, tf, red);
 
-    Vertex v0{ p0, z_axis, x_axis, Point2(0.0, 0.0) };
-    Vertex v1{ p1, z_axis, x_axis, Point2(1.0, 0.0) };
-    Vertex v2{ p2, z_axis, x_axis, Point2(1.0, 1.0) };
-    Vertex v3{ p3, z_axis, x_axis, Point2(0.0, 1.0) };
+        // right
+        tf = Transform{ Vec3(1.0f, 0.5f, -0.5f), Quat(pi, y_axis), Vec3(1.0f) };
+        CreateRectYZ(scene, tf, green);
 
-    auto vertices = std::vector<Vertex>{ v0, v1, v2, v3 };
-    auto indices = std::vector<int32>{ 0, 1, 2, 0, 2, 3 };
+        // bottom
+        tf = Transform{ Vec3(0.5f, 0.0f, -0.5f), identity, Vec3(1.0f) };
+        CreateRectXZ(scene, tf, white);
 
-    Mesh mesh(vertices, indices, identity);
+        // top
+        tf = Transform{ Vec3(0.5f, 1.0f, -0.5f), Quat(pi, x_axis), Vec3(1.0f) };
+        CreateRectXZ(scene, tf, white);
 
-    scene.AddMesh(mesh, mi);
+        // Left block
+        {
+            Float hx = 0.14f;
+            Float hy = 0.28f;
+            Float hz = 0.14f;
+
+            tf = Transform{ 0.33f, hy, -0.66f, Quat(DegToRad(18.0f), y_axis), Vec3(hx * 2.0f, hy * 2.0f, hz * 2.0f) };
+            CreateBox(scene, tf, white);
+        }
+
+        // Right block
+        {
+            Float hx = 0.14f;
+            Float hy = 0.14f;
+            Float hz = 0.14f;
+
+            // auto mat = scene.CreateMaterial<ThinDielectricMaterial>(1.5f);
+
+            tf = Transform{ 0.66f, hy, -0.33f, Quat(DegToRad(-18.0f), y_axis), Vec3(hx * 2.0f, hy * 2.0f, hz * 2.0f) };
+            CreateBox(scene, tf, white);
+        }
+    }
 
     Point3 lookfrom{ 0.5f, 0.5f, 2.05f };
     Point3 lookat{ 0.5f, 0.5f, 0.0f };
 
     Float dist_to_focus = Dist(lookfrom, lookat);
     Float aperture = 0.0f;
-    Float vFov = 28.0f;
+    Float vFov = 71.0f;
 
     camera = Camera(lookfrom, lookat, y_axis, vFov, aperture, dist_to_focus, window->GetWindowSize());
 
@@ -107,7 +133,7 @@ int main()
         delta_time += elapsed_time;
         if (delta_time > target_frame_time)
         {
-            Update();
+            Update(delta_time);
             delta_time -= target_frame_time;
         }
     }

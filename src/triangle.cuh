@@ -2,20 +2,21 @@
 
 #include "api.cuh"
 #include "common.h"
+#include "intersection.h"
 #include "wak/ray.h"
 
 namespace cuwfrt
 {
 
 __cpu_gpu__ bool TriangleIntersect(
-    Float* t_hit, const Point3& p0, const Point3& p1, const Point3& p2, const Ray& ray, Float t_min, Float t_max
+    Intersection* isect, const Point3& p0, const Point3& p1, const Point3& p2, const Ray& ray, Float t_min, Float t_max
 )
 {
     Vec3 e1 = p1 - p0;
     Vec3 e2 = p2 - p0;
 
-    Vec3 d = ray.d;
-    Float l = d.Normalize();
+    Float l = Length(ray.d);
+    Vec3 d = ray.d / l;
     Vec3 pvec = Cross(d, e2);
 
     Float det = Dot(e1, pvec);
@@ -49,9 +50,14 @@ __cpu_gpu__ bool TriangleIntersect(
         return false;
     }
 
-    WakAssert(t_hit);
+    // Found intersection
+    Float w = 1 - u - v;
 
-    *t_hit = t;
+    isect->t = t;
+    isect->point = ray.At(t);
+    isect->uvw = Point3(u, v, w);
+    isect->normal = Normalize(Cross(e1, e2));
+
     return true;
 }
 
