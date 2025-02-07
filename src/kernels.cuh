@@ -15,9 +15,37 @@
 using namespace cuwfrt;
 using namespace wak;
 
-inline __GPU__ Point2 GetTexcoord(const Point2& tc0, const Point2& tc1, const Point2& tc2, const Vec3& uvw)
+inline __GPU__ Vec3 SampleTexture(const GPUScene::Data& scene, TextureIndex ti, Point2 uv)
 {
+    float4 tex_color = tex2D<float4>(scene.tex_objs[ti], uv.x, 1 - uv.y);
+    return Vec3(tex_color.x, tex_color.y, tex_color.z);
+}
+
+inline __GPU__ Point2 GetTexcoord(const GPUScene::Data& scene, PrimitiveIndex prim, const Vec3& uvw)
+{
+    Vec3i index = scene.indices[prim];
+    Point2 tc0 = scene.texcoords[index[0]];
+    Point2 tc1 = scene.texcoords[index[1]];
+    Point2 tc2 = scene.texcoords[index[2]];
     return uvw.z * tc0 + uvw.x * tc1 + uvw.y * tc2;
+}
+
+inline __GPU__ Vec3 GetNormal(const GPUScene::Data& scene, PrimitiveIndex prim, const Vec3& uvw)
+{
+    Vec3i index = scene.indices[prim];
+    Vec3 n0 = scene.normals[index[0]];
+    Vec3 n1 = scene.normals[index[1]];
+    Vec3 n2 = scene.normals[index[2]];
+    return Normalize(uvw.z * n0 + uvw.x * n1 + uvw.y * n2);
+}
+
+inline __GPU__ Vec3 GetTangent(const GPUScene::Data& scene, PrimitiveIndex prim, const Vec3& uvw)
+{
+    Vec3i index = scene.indices[prim];
+    Vec3 t0 = scene.tangents[index[0]];
+    Vec3 t1 = scene.tangents[index[1]];
+    Vec3 t2 = scene.tangents[index[2]];
+    return Normalize(uvw.z * t0 + uvw.x * t1 + uvw.y * t2);
 }
 
 inline __GPU__ Vec3 SkyColor(Vec3 d)
@@ -205,14 +233,9 @@ __KERNEL__ void PathTrace(
         {
             if (m.texture != -1)
             {
-                Vec3i index = scene.indices[isect.prim];
-                Point2 p0 = scene.texcoords[index[0]];
-                Point2 p1 = scene.texcoords[index[1]];
-                Point2 p2 = scene.texcoords[index[2]];
-
-                Point2 uv = GetTexcoord(p0, p1, p2, isect.uvw);
-                float4 color = tex2D<float4>(scene.tex_objs[m.texture], uv.x, 1 - uv.y);
-                throughput *= Vec3{ color.x, color.y, color.z };
+                Point2 uv = GetTexcoord(scene, isect.prim, isect.uvw);
+                Vec3 tex_color = SampleTexture(scene, m.texture, uv);
+                throughput *= tex_color;
             }
             else
             {

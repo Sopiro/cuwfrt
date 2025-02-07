@@ -21,6 +21,9 @@ static Camera3D player;
 
 static int32 time = 0;
 static int32 max_samples = 64;
+static Float vfov = 71;
+static Float aperture = 0;
+static Float focus_dist = 1;
 
 static Vec3 GetForward()
 {
@@ -52,6 +55,13 @@ static void Update(Float dt)
         if (ImGui::SliderInt("max bounces", &options.max_bounces, 0, 64)) time = 0;
         ImGui::SetNextItemWidth(100);
         if (ImGui::SliderInt("max samples", &max_samples, 1, 1024)) time = 0;
+        ImGui::Separator();
+        ImGui::SetNextItemWidth(100);
+        if (ImGui::SliderFloat("vfov", &vfov, 1.0f, 130.0f)) time = 0;
+        ImGui::SetNextItemWidth(100);
+        if (ImGui::SliderFloat("aperture", &aperture, 0.0f, 0.1f)) time = 0;
+        ImGui::SetNextItemWidth(100);
+        if (ImGui::SliderFloat("focus", &focus_dist, 0.0f, 10.0f)) time = 0;
     }
     ImGui::End();
 
@@ -64,7 +74,7 @@ static void Update(Float dt)
         time = 0;
     }
 
-    camera = Camera(player.position, GetForward(), y_axis, 71, 0.0f, 1.0f, window->GetWindowSize());
+    camera = Camera(player.position, GetForward(), y_axis, vfov, aperture, focus_dist, window->GetWindowSize());
     if (time < max_samples)
     {
         raytracer->RayTrace(time);

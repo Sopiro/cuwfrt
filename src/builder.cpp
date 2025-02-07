@@ -131,8 +131,9 @@ void CreateBox(Scene& scene, const Transform& transform, MaterialIndex material,
 
 void CreateCornellBox(Scene& scene, const Transform& o)
 {
-    TextureIndex wak = scene.AddTexture({ .filename = "C:/Users/sopir/Desktop/assets/wakdu.jpg", .non_color = false });
-    MaterialIndex white = scene.AddMaterial({ .reflectance{ .73f, .73f, .73f }, .texture = wak });
+    TextureIndex wak_tex = scene.AddTexture({ .filename = "C:/Users/sopir/Desktop/assets/wakdu.jpg", .non_color = false });
+    MaterialIndex wak = scene.AddMaterial({ .texture = wak_tex });
+    MaterialIndex white = scene.AddMaterial({ .reflectance{ .73f, .73f, .73f } });
     MaterialIndex red = scene.AddMaterial({ .reflectance{ .65f, .05f, .05f } });
     MaterialIndex green = scene.AddMaterial({ .reflectance{ .12f, .45f, .15f } });
     MaterialIndex light = scene.AddMaterial({ .is_light{ true }, .reflectance{ 15.0f, 15.0f, 15.0f } });
@@ -141,7 +142,7 @@ void CreateCornellBox(Scene& scene, const Transform& o)
     {
         // front
         auto tf = Transform{ Vec3(0.5f, 0.5f, -1.0f), identity, Vec3(1.0f) };
-        CreateRectXY(scene, o * tf, white);
+        CreateRectXY(scene, o * tf, wak);
 
         // left
         tf = Transform{ Vec3(0.0f, 0.5f, -0.5f), identity, Vec3(1.0f) };
