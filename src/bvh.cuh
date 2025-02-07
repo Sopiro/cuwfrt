@@ -12,6 +12,20 @@ namespace cuwfrt
 
 class Scene;
 
+struct alignas(32) LinearBVHNode
+{
+    AABB aabb;
+
+    union
+    {
+        int32 primitives_offset;
+        int32 child2_offset;
+    };
+
+    uint16 primitive_count;
+    uint8 axis;
+};
+
 class BVH
 {
 public:
@@ -46,20 +60,6 @@ private:
         BuildNode* child2;
     };
 
-    struct alignas(32) LinearBVHNode
-    {
-        AABB aabb;
-
-        union
-        {
-            int32 primitives_offset;
-            int32 child2_offset;
-        };
-
-        uint16 primitive_count;
-        uint8 axis;
-    };
-
     BuildNode* BuildRecursive(
         ThreadLocal<std::pmr::polymorphic_allocator<std::byte>>& thread_allocators,
         std::span<BVHPrimitive> primitive_span,
@@ -74,7 +74,11 @@ private:
     void RayCast(const Ray& r, Float t_min, Float t_max, T* callback) const;
 
     const Scene* scene;
+
+public:
     std::vector<PrimitiveIndex> primitives;
+
+    int32 node_count;
     LinearBVHNode* nodes;
 };
 

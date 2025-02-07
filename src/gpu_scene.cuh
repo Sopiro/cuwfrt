@@ -1,5 +1,6 @@
 #pragma once
 
+#include "bvh.cuh"
 #include "indices.h"
 #include "material.h"
 
@@ -12,6 +13,7 @@ struct GPUScene
 {
     Material* materials = nullptr;
 
+    // Scene primitives
     Vec3* positions = nullptr;
     Vec3* normals = nullptr;
     Vec3* tangents = nullptr;
@@ -19,6 +21,10 @@ struct GPUScene
     MaterialIndex* material_indices = nullptr;
     Vec3i* indices = nullptr;
     int32* light_indices = nullptr;
+
+    // BVH
+    PrimitiveIndex* bvh_primitives;
+    LinearBVHNode* bvh_nodes;
 
     void Init(Scene* scene);
     void Free();

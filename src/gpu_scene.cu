@@ -41,6 +41,16 @@ void GPUScene::Init(Scene* scene)
     cudaCheck(cudaMalloc(&light_indices, light_indices_size));
     cudaCheck(cudaMemcpyAsync(light_indices, scene->light_indices.data(), light_indices_size, cudaMemcpyHostToDevice));
 
+    BVH bvh(scene);
+
+    size_t bvh_primitives_size = sizeof(PrimitiveIndex) * bvh.primitives.size();
+    cudaCheck(cudaMalloc(&bvh_primitives, bvh_primitives_size));
+    cudaCheck(cudaMemcpyAsync(bvh_primitives, bvh.primitives.data(), bvh_primitives_size, cudaMemcpyHostToDevice));
+
+    size_t bvh_nodes_size = sizeof(LinearBVHNode) * bvh.node_count;
+    cudaCheck(cudaMalloc(&bvh_nodes, bvh_nodes_size));
+    cudaCheck(cudaMemcpyAsync(bvh_nodes, bvh.nodes, bvh_nodes_size, cudaMemcpyHostToDevice));
+
     cudaCheck(cudaDeviceSynchronize());
 }
 
@@ -54,6 +64,9 @@ void GPUScene::Free()
     cudaCheck(cudaFree(material_indices));
     cudaCheck(cudaFree(indices));
     cudaCheck(cudaFree(light_indices));
+
+    cudaCheck(cudaFree(bvh_primitives));
+    cudaCheck(cudaFree(bvh_nodes));
 }
 
 } // namespace cuwfrt

@@ -15,11 +15,18 @@ using Allocator = std::pmr::polymorphic_allocator<std::byte>;
 BVH::BVH(const Scene* scene)
     : scene{ scene }
 {
-    size_t primitive_count = primitives.size();
+    size_t primitive_count = scene->indices.size();
+
+    primitives.resize(primitive_count);
+    for (size_t i = 0; i < primitive_count; ++i)
+    {
+        primitives[i] = PrimitiveIndex(i);
+    }
+
     std::vector<BVHPrimitive> bvh_primitives(primitive_count);
     for (size_t i = 0; i < primitive_count; ++i)
     {
-        bvh_primitives[i] = BVHPrimitive(i, scene->aabbs[i]);
+        bvh_primitives[i] = BVHPrimitive(i, scene->aabbs[primitives[i]]);
     }
 
     std::vector<PrimitiveIndex> ordered_prims(primitive_count);
@@ -53,6 +60,7 @@ BVH::BVH(const Scene* scene)
     FlattenBVH(root, &offset);
 
     WakAssert(offset == total_nodes);
+    node_count = total_nodes;
 }
 
 BVH::~BVH() noexcept
