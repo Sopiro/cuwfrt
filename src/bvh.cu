@@ -1,7 +1,7 @@
 #include "bvh.cuh"
 #include "parallel_for.h"
 #include "scene.h"
-#include "triangle.cuh"
+#include "triangle.h"
 
 #include <algorithm>
 

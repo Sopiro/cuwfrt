@@ -1,7 +1,7 @@
 #pragma once
 
-#include "api.cuh"
 #include "common.h"
+#include "cuda_api.h"
 
 namespace cuwfrt
 {

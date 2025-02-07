@@ -1,7 +1,7 @@
 #pragma once
 
-#include "api.cuh"
 #include "common.h"
+#include "cuda_api.h"
 #include "filters.h"
 #include "sampling.h"
 

@@ -1,3 +1,4 @@
+#include "cuda_error.cuh"
 #include "kernels.cuh"
 #include "raytracer.cuh"
 #include "scene.h"

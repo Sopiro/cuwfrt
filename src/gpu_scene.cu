@@ -1,4 +1,5 @@
-#include "api.cuh"
+#include "cuda_api.h"
+#include "cuda_error.cuh"
 
 #include "gpu_scene.cuh"
 #include "scene.h"

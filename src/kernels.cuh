@@ -3,11 +3,11 @@
 #include "wak/hash.h"
 #include "wak/random.h"
 
-#include "api.cuh"
+#include "cuda_api.h"
 #include "frame.h"
 #include "gpu_scene.cuh"
 #include "sampling.h"
-#include "triangle.cuh"
+#include "triangle.h"
 
 #include "camera.h"
 
