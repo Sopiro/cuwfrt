@@ -89,6 +89,68 @@ __gpu__ bool Intersect(Intersection* closest, const GPUScene& scene, Ray r, Floa
     return hit_closest;
 }
 
+__gpu__ bool IntersectAny(const GPUScene& scene, Ray r, Float t_min, Float t_max)
+{
+    const Vec3 inv_dir(1 / r.d.x, 1 / r.d.y, 1 / r.d.z);
+    const int32 is_dir_neg[3] = { int32(inv_dir.x < 0), int32(inv_dir.y < 0), int32(inv_dir.z < 0) };
+
+    int32 stack[64];
+    int32 stack_ptr = 0;
+    stack[stack_ptr++] = 0;
+
+    while (stack_ptr > 0)
+    {
+        int32 index = stack[--stack_ptr];
+
+        LinearBVHNode& node = scene.bvh_nodes[index];
+
+        if (node.aabb.TestRay(r.o, t_min, t_max, inv_dir, is_dir_neg))
+        {
+            if (node.primitive_count > 0)
+            {
+                // Leaf node
+                for (int32 i = 0; i < node.primitive_count; ++i)
+                {
+                    PrimitiveIndex primitive = scene.bvh_primitives[node.primitives_offset + i];
+                    Vec3i index = scene.indices[primitive];
+                    Vec3 p0 = scene.positions[index[0]];
+                    Vec3 p1 = scene.positions[index[1]];
+                    Vec3 p2 = scene.positions[index[2]];
+
+                    Intersection isect;
+                    bool hit = TriangleIntersectAny(p0, p1, p2, r, t_min, t_max);
+                    if (hit)
+                    {
+                        return true;
+                    }
+                }
+            }
+            else
+            {
+                // Internal node
+
+                // Ordered traversal
+                // Put far child on stack first
+                int32 child1 = index + 1;
+                int32 child2 = node.child2_offset;
+
+                if (is_dir_neg[scene.bvh_nodes[index].axis])
+                {
+                    stack[stack_ptr++] = child1;
+                    stack[stack_ptr++] = child2;
+                }
+                else
+                {
+                    stack[stack_ptr++] = child2;
+                    stack[stack_ptr++] = child1;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
 __kernel__ void RenderGradient(Vec4* pixels, Point2i res)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -99,9 +161,7 @@ __kernel__ void RenderGradient(Vec4* pixels, Point2i res)
     pixels[index] = Vec4(x / (float)res.x, y / (float)res.y, 128 / 255.0f, 1.0f); // Simple gradient
 }
 
-__kernel__ void PathTrace(
-    Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUScene scene, Camera camera, int32 tri_count, int32 time
-)
+__kernel__ void PathTrace(Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUScene scene, Camera camera, int32 time)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;

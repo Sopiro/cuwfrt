@@ -15,6 +15,8 @@ public:
     MaterialIndex AddMaterial(Material mat);
     void AddMesh(const Mesh& mat, MaterialIndex mi);
 
+    void Clear();
+
     std::vector<Material> materials;
 
     // Triangles

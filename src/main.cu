@@ -160,6 +160,8 @@ void Init()
     player.speed = 1.5f;
     player.damping = 100.0f;
     raytracer = new RayTracer(window, &scene, &camera);
+
+    scene.Clear();
 }
 
 void Terminate()

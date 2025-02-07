@@ -1,7 +1,7 @@
 #pragma once
 
-#include "mesh.h"
 #include "scene.h"
+#include "mesh.h"
 #include "triangle.h"
 
 namespace cuwfrt
@@ -43,6 +43,30 @@ void Scene::AddMesh(const Mesh& mesh, MaterialIndex mi)
 
         aabbs.push_back(TriangleAABB(positions[i0], positions[i1], positions[i2]));
     }
+}
+
+void Scene::Clear()
+{
+    materials.resize(0);
+    materials.shrink_to_fit();
+
+    positions.resize(0);
+    positions.shrink_to_fit();
+    normals.resize(0);
+    normals.shrink_to_fit();
+    tangents.resize(0);
+    tangents.shrink_to_fit();
+    texcoords.resize(0);
+    texcoords.shrink_to_fit();
+    material_indices.resize(0);
+    material_indices.shrink_to_fit();
+    indices.resize(0);
+    indices.shrink_to_fit();
+    light_indices.resize(0);
+    light_indices.shrink_to_fit();
+
+    aabbs.resize(0);
+    aabbs.shrink_to_fit();
 }
 
 } // namespace cuwfrt
