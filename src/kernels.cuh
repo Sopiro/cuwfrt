@@ -14,13 +14,13 @@
 using namespace cuwfrt;
 using namespace wak;
 
-inline __gpu__ Vec3 SkyColor(Vec3 d)
+inline __GPU__ Vec3 SkyColor(Vec3 d)
 {
     Float a = 0.5 * (d.y + 1.0);
     return (1.0 - a) * Vec3(1.0, 1.0, 1.0) + a * Vec3(0.5, 0.7, 1.0);
 }
 
-__gpu__ bool Intersect(Intersection* closest, const GPUScene& scene, Ray r, Float t_min, Float t_max)
+__GPU__ bool Intersect(Intersection* closest, const GPUScene& scene, Ray r, Float t_min, Float t_max)
 {
     bool hit_closest = false;
 
@@ -89,7 +89,7 @@ __gpu__ bool Intersect(Intersection* closest, const GPUScene& scene, Ray r, Floa
     return hit_closest;
 }
 
-__gpu__ bool IntersectAny(const GPUScene& scene, Ray r, Float t_min, Float t_max)
+__GPU__ bool IntersectAny(const GPUScene& scene, Ray r, Float t_min, Float t_max)
 {
     const Vec3 inv_dir(1 / r.d.x, 1 / r.d.y, 1 / r.d.z);
     const int32 is_dir_neg[3] = { int32(inv_dir.x < 0), int32(inv_dir.y < 0), int32(inv_dir.z < 0) };
@@ -151,7 +151,7 @@ __gpu__ bool IntersectAny(const GPUScene& scene, Ray r, Float t_min, Float t_max
     return false;
 }
 
-__kernel__ void RenderGradient(Vec4* pixels, Point2i res)
+__KERNEL__ void RenderGradient(Vec4* pixels, Point2i res)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -161,7 +161,7 @@ __kernel__ void RenderGradient(Vec4* pixels, Point2i res)
     pixels[index] = Vec4(x / (float)res.x, y / (float)res.y, 128 / 255.0f, 1.0f); // Simple gradient
 }
 
-__kernel__ void PathTrace(Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUScene scene, Camera camera, int32 time)
+__KERNEL__ void PathTrace(Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUScene scene, Camera camera, int32 time)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;

@@ -42,7 +42,7 @@ public:
         lens_radius = aperture / 2;
     }
 
-    __cpu_gpu__ Float SampleRay(Ray* ray, const Point2i& pixel, const Point2& u0, const Point2& u1) const
+    __CPU_GPU__ Float SampleRay(Ray* ray, const Point2i& pixel, const Point2& u0, const Point2& u1) const
     {
         const Float sigma = 0.5f;
 

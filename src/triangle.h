@@ -8,7 +8,7 @@
 namespace cuwfrt
 {
 
-inline __cpu_gpu__ bool TriangleIntersect(
+inline __CPU_GPU__ bool TriangleIntersect(
     Intersection* isect, const Point3& p0, const Point3& p1, const Point3& p2, const Ray& ray, Float t_min, Float t_max
 )
 {
@@ -67,7 +67,7 @@ inline __cpu_gpu__ bool TriangleIntersect(
     return true;
 }
 
-inline __cpu_gpu__ bool TriangleIntersectAny(
+inline __CPU_GPU__ bool TriangleIntersectAny(
     const Point3& p0, const Point3& p1, const Point3& p2, const Ray& ray, Float t_min, Float t_max
 )
 {
@@ -112,7 +112,7 @@ inline __cpu_gpu__ bool TriangleIntersectAny(
     return true;
 }
 
-inline __cpu_gpu__ static AABB TriangleAABB(const Point3& p0, const Point3& p1, const Point3& p2)
+inline __CPU_GPU__ static AABB TriangleAABB(const Point3& p0, const Point3& p1, const Point3& p2)
 {
     const Vec3 aabb_epsilon{ epsilon * 10 };
 
