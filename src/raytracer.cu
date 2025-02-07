@@ -87,11 +87,15 @@ void RayTracer::FreeGPUResources()
     gpu_scene.Free();
 }
 
-void RayTracer::Update(int32 t)
+void RayTracer::RayTrace(int32 t)
 {
     time = t;
 
     RenderGPU();
+}
+
+void RayTracer::DrawFrame()
+{
     UpdateTexture();
     RenderQuad();
 }
@@ -102,7 +106,7 @@ void RayTracer::RenderGPU()
     const dim3 threads(8, 8);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    Render<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_scene, *camera, int32(scene->indices.size()), time);
+    PathTrace<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_scene, *camera, int32(scene->indices.size()), time);
 
     cudaCheck(cudaGetLastError());
     cudaCheck(cudaDeviceSynchronize());

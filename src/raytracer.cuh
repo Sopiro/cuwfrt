@@ -10,6 +10,8 @@
 namespace cuwfrt
 {
 
+using namespace alzartak;
+
 class Scene;
 
 class RayTracer
@@ -18,7 +20,8 @@ public:
     RayTracer(Window* window, Scene* scene, Camera* camera);
     ~RayTracer();
 
-    void Update(int32 time);
+    void RayTrace(int32 time);
+    void DrawFrame();
 
 private:
     void InitGPUResources();

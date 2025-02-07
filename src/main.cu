@@ -19,6 +19,7 @@ static Camera camera;
 static Camera3D player;
 
 static int32 time = 0;
+static int32 max_samples = 64;
 
 static Vec3 GetForward()
 {
@@ -42,10 +43,15 @@ void Update(Float dt)
     ImGuiIO& io = ImGui::GetIO();
 
     ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
-    if (ImGui::Begin("alzartak", NULL))
+    if (ImGui::Begin("cuwfrt", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::Text("%d fps", int32(io.Framerate));
-        ImGui::Text("%d samples", time);
+        ImGui::Text("%d samples", std::min(time, max_samples));
+        ImGui::SetNextItemWidth(100);
+        if (ImGui::SliderInt("max samples", &max_samples, 1, 1024))
+        {
+            time = 0;
+        }
     }
     ImGui::End();
 
@@ -59,7 +65,12 @@ void Update(Float dt)
     }
 
     camera = Camera(player.position, GetForward(), y_axis, 71, 0.0f, 1.0f, window->GetWindowSize());
-    raytracer->Update(time);
+    if (time < max_samples)
+    {
+        raytracer->RayTrace(time);
+    }
+
+    raytracer->DrawFrame();
 
     window->EndFrame();
 }

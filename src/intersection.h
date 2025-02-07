@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "indices.h"
 
 namespace cuwfrt
 {
@@ -13,7 +14,9 @@ struct Intersection
     Vec3 normal; // Geometric normal
     Point3 uvw;
 
-    int32 index;
+    bool front_face;
+
+    PrimitiveIndex index;
 };
 
 } // namespace cuwfrt

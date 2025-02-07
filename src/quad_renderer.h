@@ -5,7 +5,6 @@
 
 namespace cuwfrt
 {
-using namespace alzartak;
 
 class QuadRenderer
 {
@@ -19,20 +18,20 @@ public:
         shader.SetProjectionMatrix(identity);
     }
 
-    void Draw()
+    void Draw() const
     {
         shader.Use();
         quad.Draw();
     }
 
 private:
-    Mesh quad;
-    MeshShader shader;
+    alzartak::Mesh quad;
+    alzartak::MeshShader shader;
 
-    static inline Vertex quad_vertices[4] = { { { -1.0f, -1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 0, 0 } },
-                                              { { 1.0f, -1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 1, 0 } },
-                                              { { -1.0f, 1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 0, 1 } },
-                                              { { 1.0f, 1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 1, 1 } } };
+    static inline alzartak::Vertex quad_vertices[4] = { { { -1.0f, -1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 0, 0 } },
+                                                        { { 1.0f, -1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 1, 0 } },
+                                                        { { -1.0f, 1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 0, 1 } },
+                                                        { { 1.0f, 1.0f, 0.0f }, { 0, 0, 1 }, { 1, 0, 0 }, { 1, 1 } } };
     static inline int32 quad_indices[6] = { 0, 1, 2, 2, 1, 3 };
 };
 

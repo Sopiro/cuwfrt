@@ -56,7 +56,13 @@ __cpu_gpu__ bool TriangleIntersect(
     isect->t = t;
     isect->point = ray.At(t);
     isect->uvw = Point3(u, v, w);
-    isect->normal = Normalize(Cross(e1, e2));
+    Vec3 face_normal = Normalize(Cross(e1, e2));
+
+    bool front_face = Dot(ray.d, face_normal) < 0;
+    Float sign = front_face ? 1.0f : -1.0f;
+
+    isect->front_face = front_face;
+    isect->normal = sign * face_normal;
 
     return true;
 }
