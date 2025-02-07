@@ -16,7 +16,7 @@ struct Intersection
 
     bool front_face;
 
-    PrimitiveIndex index;
+    PrimitiveIndex prim;
 };
 
 } // namespace cuwfrt

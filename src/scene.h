@@ -3,6 +3,7 @@
 #include "indices.h"
 #include "material.h"
 #include "mesh.h"
+#include "texture_desc.h"
 
 namespace cuwfrt
 {
@@ -12,11 +13,13 @@ class Scene
 public:
     Scene() = default;
 
+    TextureIndex AddTexture(TextureDesc tex);
     MaterialIndex AddMaterial(Material mat);
     void AddMesh(const Mesh& mat, MaterialIndex mi);
 
     void Clear();
 
+    std::vector<TextureDesc> textures;
     std::vector<Material> materials;
 
     // Triangles

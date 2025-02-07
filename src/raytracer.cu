@@ -108,7 +108,7 @@ void RayTracer::RenderGPU()
     const dim3 threads(8, 8);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    PathTrace<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_scene, *camera, *options, time);
+    PathTrace<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_scene.data, *camera, *options, time);
 
     cudaCheck(cudaGetLastError());
     cudaCheck(cudaDeviceSynchronize());

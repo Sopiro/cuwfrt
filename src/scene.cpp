@@ -7,6 +7,21 @@
 namespace cuwfrt
 {
 
+TextureIndex Scene::AddTexture(TextureDesc tex)
+{
+    for (int32 i = 0; i < textures.size(); ++i)
+    {
+        if (textures[i] == tex)
+        {
+            return TextureIndex(i);
+        }
+    }
+
+    TextureIndex ti = int32(textures.size());
+    textures.push_back(std::move(tex));
+    return ti;
+}
+
 MaterialIndex Scene::AddMaterial(Material mat)
 {
     MaterialIndex mi = int32(materials.size());

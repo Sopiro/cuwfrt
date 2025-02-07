@@ -131,7 +131,8 @@ void CreateBox(Scene& scene, const Transform& transform, MaterialIndex material,
 
 void CreateCornellBox(Scene& scene, const Transform& o)
 {
-    MaterialIndex white = scene.AddMaterial({ .reflectance{ .73f, .73f, .73f } });
+    TextureIndex wak = scene.AddTexture({ .filename = "C:/Users/sopir/Desktop/assets/wakdu.jpg", .non_color = false });
+    MaterialIndex white = scene.AddMaterial({ .reflectance{ .73f, .73f, .73f }, .texture = wak });
     MaterialIndex red = scene.AddMaterial({ .reflectance{ .65f, .05f, .05f } });
     MaterialIndex green = scene.AddMaterial({ .reflectance{ .12f, .45f, .15f } });
     MaterialIndex light = scene.AddMaterial({ .is_light{ true }, .reflectance{ 15.0f, 15.0f, 15.0f } });

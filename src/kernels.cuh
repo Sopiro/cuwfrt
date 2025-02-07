@@ -15,13 +15,18 @@
 using namespace cuwfrt;
 using namespace wak;
 
+inline __GPU__ Point2 GetTexcoord(const Point2& tc0, const Point2& tc1, const Point2& tc2, const Vec3& uvw)
+{
+    return uvw.z * tc0 + uvw.x * tc1 + uvw.y * tc2;
+}
+
 inline __GPU__ Vec3 SkyColor(Vec3 d)
 {
     Float a = 0.5 * (d.y + 1.0);
     return (1.0 - a) * Vec3(1.0, 1.0, 1.0) + a * Vec3(0.5, 0.7, 1.0);
 }
 
-__GPU__ bool Intersect(Intersection* closest, const GPUScene& scene, Ray r, Float t_min, Float t_max)
+__GPU__ bool Intersect(Intersection* closest, const GPUScene::Data& scene, Ray r, Float t_min, Float t_max)
 {
     bool hit_closest = false;
 
@@ -57,7 +62,7 @@ __GPU__ bool Intersect(Intersection* closest, const GPUScene& scene, Ray r, Floa
                     {
                         WakAssert(isect.t <= t_max);
                         hit_closest = true;
-                        isect.index = primitive;
+                        isect.prim = primitive;
 
                         t_max = isect.t;
                         *closest = isect;
@@ -90,7 +95,7 @@ __GPU__ bool Intersect(Intersection* closest, const GPUScene& scene, Ray r, Floa
     return hit_closest;
 }
 
-__GPU__ bool IntersectAny(const GPUScene& scene, Ray r, Float t_min, Float t_max)
+__GPU__ bool IntersectAny(const GPUScene::Data& scene, Ray r, Float t_min, Float t_max)
 {
     const Vec3 inv_dir(1 / r.d.x, 1 / r.d.y, 1 / r.d.z);
     const int32 is_dir_neg[3] = { int32(inv_dir.x < 0), int32(inv_dir.y < 0), int32(inv_dir.z < 0) };
@@ -163,7 +168,7 @@ __KERNEL__ void RenderGradient(Vec4* pixels, Point2i res)
 }
 
 __KERNEL__ void PathTrace(
-    Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUScene scene, Camera camera, Options options, int32 time
+    Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUScene::Data scene, Camera camera, Options options, int32 time
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -189,7 +194,7 @@ __KERNEL__ void PathTrace(
             break;
         }
 
-        MaterialIndex mi = scene.material_indices[isect.index];
+        MaterialIndex mi = scene.material_indices[isect.prim];
         Material& m = scene.materials[mi];
         if (m.is_light)
         {
@@ -198,7 +203,21 @@ __KERNEL__ void PathTrace(
         }
         else
         {
-            throughput *= m.reflectance;
+            if (m.texture != -1)
+            {
+                Vec3i index = scene.indices[isect.prim];
+                Point2 p0 = scene.texcoords[index[0]];
+                Point2 p1 = scene.texcoords[index[1]];
+                Point2 p2 = scene.texcoords[index[2]];
+
+                Point2 uv = GetTexcoord(p0, p1, p2, isect.uvw);
+                float4 color = tex2D<float4>(scene.tex_objs[m.texture], uv.x, 1 - uv.y);
+                throughput *= Vec3{ color.x, color.y, color.z };
+            }
+            else
+            {
+                throughput *= m.reflectance;
+            }
         }
 
         if (bounce++ >= options.max_bounces)
