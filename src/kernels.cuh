@@ -20,31 +20,73 @@ inline __gpu__ Vec3 SkyColor(Vec3 d)
     return (1.0 - a) * Vec3(1.0, 1.0, 1.0) + a * Vec3(0.5, 0.7, 1.0);
 }
 
-__gpu__ bool Intersect(Intersection* closest, const GPUScene& scene, Ray ray, int32 tri_count)
+__gpu__ bool Intersect(Intersection* closest, const GPUScene& scene, Ray r, Float t_min, Float t_max)
 {
-    bool found_intersection = false;
-    closest->t = infinity;
+    bool hit_closest = false;
 
-    for (int32 i = 0; i < tri_count; ++i)
+    const Vec3 inv_dir(1 / r.d.x, 1 / r.d.y, 1 / r.d.z);
+    const int32 is_dir_neg[3] = { int32(inv_dir.x < 0), int32(inv_dir.y < 0), int32(inv_dir.z < 0) };
+
+    int32 stack[64];
+    int32 stack_ptr = 0;
+    stack[stack_ptr++] = 0;
+
+    while (stack_ptr > 0)
     {
-        Vec3i index = scene.indices[i];
-        Vec3 p0 = scene.positions[index[0]];
-        Vec3 p1 = scene.positions[index[1]];
-        Vec3 p2 = scene.positions[index[2]];
+        int32 index = stack[--stack_ptr];
 
-        Intersection isect;
-        if (TriangleIntersect(&isect, p0, p1, p2, ray, Ray::epsilon, infinity))
+        LinearBVHNode& node = scene.bvh_nodes[index];
+
+        if (node.aabb.TestRay(r.o, t_min, t_max, inv_dir, is_dir_neg))
         {
-            found_intersection = true;
-            if (isect.t < closest->t)
+            if (node.primitive_count > 0)
             {
-                isect.index = i;
-                *closest = isect;
+                // Leaf node
+                for (int32 i = 0; i < node.primitive_count; ++i)
+                {
+                    PrimitiveIndex primitive = scene.bvh_primitives[node.primitives_offset + i];
+                    Vec3i index = scene.indices[primitive];
+                    Vec3 p0 = scene.positions[index[0]];
+                    Vec3 p1 = scene.positions[index[1]];
+                    Vec3 p2 = scene.positions[index[2]];
+
+                    Intersection isect;
+                    bool hit = TriangleIntersect(&isect, p0, p1, p2, r, t_min, t_max);
+                    if (hit)
+                    {
+                        WakAssert(isect.t <= t_max);
+                        hit_closest = true;
+                        isect.index = primitive;
+
+                        t_max = isect.t;
+                        *closest = isect;
+                    }
+                }
+            }
+            else
+            {
+                // Internal node
+
+                // Ordered traversal
+                // Put far child on stack first
+                int32 child1 = index + 1;
+                int32 child2 = node.child2_offset;
+
+                if (is_dir_neg[scene.bvh_nodes[index].axis])
+                {
+                    stack[stack_ptr++] = child1;
+                    stack[stack_ptr++] = child2;
+                }
+                else
+                {
+                    stack[stack_ptr++] = child2;
+                    stack[stack_ptr++] = child1;
+                }
             }
         }
     }
 
-    return found_intersection;
+    return hit_closest;
 }
 
 __kernel__ void RenderGradient(Vec4* pixels, Point2i res)
@@ -74,10 +116,11 @@ __kernel__ void PathTrace(
     Vec3 L(0);
 
     int32 bounce = 0;
-    while (bounce < 10)
+    const int32 max_bounces = 3;
+    while (true)
     {
         Intersection isect;
-        bool found_intersection = Intersect(&isect, scene, ray, tri_count);
+        bool found_intersection = Intersect(&isect, scene, ray, Ray::epsilon, infinity);
         if (!found_intersection)
         {
             L += throughput * SkyColor(ray.d);
@@ -96,7 +139,12 @@ __kernel__ void PathTrace(
             throughput *= m.reflectance;
         }
 
-        if (bounce > 2)
+        if (bounce++ >= max_bounces)
+        {
+            break;
+        }
+
+        if (bounce > 1)
         {
             Float rr = fmin(1.0f, fmax(throughput.x, fmax(throughput.y, throughput.z)));
             if (rng.NextFloat() < rr)
