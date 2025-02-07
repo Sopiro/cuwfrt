@@ -25,6 +25,8 @@ public:
     std::vector<MaterialIndex> material_indices;
     std::vector<Point3i> indices;
     std::vector<int32> light_indices;
+
+    std::vector<AABB> aabbs;
 };
 
 } // namespace cuwfrt

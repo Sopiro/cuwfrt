@@ -1,7 +1,8 @@
 #pragma once
 
-#include "mesh.h"
 #include "scene.h"
+#include "mesh.h"
+#include "triangle.cuh"
 
 namespace cuwfrt
 {
@@ -24,6 +25,8 @@ void Scene::AddMesh(const Mesh& mesh, MaterialIndex mi)
 
     indices.reserve(indices.size() + mesh.triangle_count);
     material_indices.reserve(material_indices.size() + mesh.triangle_count);
+    aabbs.reserve(aabbs.size() + mesh.triangle_count);
+
     for (size_t i = 0; i < mesh.indices.size(); i += 3)
     {
         int32 i0 = offset + mesh.indices[i + 0];
@@ -37,6 +40,8 @@ void Scene::AddMesh(const Mesh& mesh, MaterialIndex mi)
         {
             light_indices.push_back(int32(indices.size() - 1));
         }
+
+        aabbs.push_back(TriangleAABB(positions[i0], positions[i1], positions[i2]));
     }
 }
 

@@ -3,6 +3,7 @@
 #include "common.h"
 
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <optional>
 #include <shared_mutex>

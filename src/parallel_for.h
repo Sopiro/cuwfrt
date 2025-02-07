@@ -1,7 +1,6 @@
 #pragma once
 
 #include "parallel.h"
-#include "wak/bounding_box.h"
 
 namespace cuwfrt
 {

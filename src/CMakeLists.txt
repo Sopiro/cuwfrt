@@ -42,6 +42,7 @@ if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
         -Xcompiler=/wd4819
         -Wno-deprecated-gpu-targets
+        --expt-relaxed-constexpr
         >
     )
 endif()
