@@ -14,10 +14,15 @@ using namespace alzartak;
 
 class Scene;
 
+struct Options
+{
+    int32 max_bounces = 5;
+};
+
 class RayTracer
 {
 public:
-    RayTracer(Window* window, Scene* scene, Camera* camera);
+    RayTracer(Window* window, Scene* scene, Camera* camera, Options* options);
     ~RayTracer();
 
     void RayTrace(int32 time);
@@ -46,6 +51,7 @@ private:
 
     Scene* scene;
     Camera* camera;
+    Options* options;
 
     GPUScene gpu_scene;
 

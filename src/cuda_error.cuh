@@ -2,13 +2,13 @@
 
 #include <iostream>
 
-// https://developer.nvidia.com/blog/accelerated-ray-tracing-cuda
 #ifdef BENCHMARK
 #define cudaCheck(val) (val)
 #else
 #define cudaCheck(val) cuda_check((val), #val, __FILE__, __LINE__)
 #endif
 
+// https://developer.nvidia.com/blog/accelerated-ray-tracing-cuda
 inline void cuda_check(cudaError_t result, const char* const func, const char* const file, int const line)
 {
     if (result)

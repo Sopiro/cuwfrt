@@ -15,6 +15,7 @@ static RayTracer* raytracer;
 
 static Scene scene;
 static Camera camera;
+static Options options;
 
 static Camera3D player;
 
@@ -34,7 +35,7 @@ static Vec3 GetForward()
     return Normalize(forward);
 }
 
-void Update(Float dt)
+static void Update(Float dt)
 {
     ++time;
 
@@ -48,10 +49,9 @@ void Update(Float dt)
         ImGui::Text("%d fps", int32(io.Framerate));
         ImGui::Text("%d samples", std::min(time, max_samples));
         ImGui::SetNextItemWidth(100);
-        if (ImGui::SliderInt("max samples", &max_samples, 1, 1024))
-        {
-            time = 0;
-        }
+        if (ImGui::SliderInt("max bounces", &options.max_bounces, 0, 64)) time = 0;
+        ImGui::SetNextItemWidth(100);
+        if (ImGui::SliderInt("max samples", &max_samples, 1, 1024)) time = 0;
     }
     ImGui::End();
 
@@ -75,65 +75,19 @@ void Update(Float dt)
     window->EndFrame();
 }
 
-void CornellBox(Transform o)
+static void BuildScene()
 {
-    MaterialIndex white = scene.AddMaterial({ .reflectance{ .73f, .73f, .73f } });
-    MaterialIndex red = scene.AddMaterial({ .reflectance{ .65f, .05f, .05f } });
-    MaterialIndex green = scene.AddMaterial({ .reflectance{ .12f, .45f, .15f } });
-    MaterialIndex light = scene.AddMaterial({ .is_light{ true }, .reflectance{ 15.0f, 15.0f, 15.0f } });
-
-    // The Cornell box
+    for (int32 j = 0; j < 10; ++j)
     {
-        // front
-        auto tf = Transform{ Vec3(0.5f, 0.5f, -1.0f), identity, Vec3(1.0f) };
-        CreateRectXY(scene, o * tf, white);
-
-        // left
-        tf = Transform{ Vec3(0.0f, 0.5f, -0.5f), identity, Vec3(1.0f) };
-        CreateRectYZ(scene, o * tf, red);
-
-        // right
-        tf = Transform{ Vec3(1.0f, 0.5f, -0.5f), Quat(pi, y_axis), Vec3(1.0f) };
-        CreateRectYZ(scene, o * tf, green);
-
-        // bottom
-        tf = Transform{ Vec3(0.5f, 0.0f, -0.5f), identity, Vec3(1.0f) };
-        CreateRectXZ(scene, o * tf, white);
-
-        // top
-        tf = Transform{ Vec3(0.5f, 1.0f, -0.5f), Quat(pi, x_axis), Vec3(1.0f) };
-        CreateRectXZ(scene, o * tf, white);
-
-        // Left block
+        for (int32 i = 0; i < 10; ++i)
         {
-            Float hx = 0.14f;
-            Float hy = 0.28f;
-            Float hz = 0.14f;
-
-            tf = Transform{ 0.33f, hy, -0.66f, Quat(DegToRad(18.0f), y_axis), Vec3(hx * 2.0f, hy * 2.0f, hz * 2.0f) };
-            CreateBox(scene, o * tf, white);
-        }
-
-        // Right block
-        {
-            Float hx = 0.14f;
-            Float hy = 0.14f;
-            Float hz = 0.14f;
-
-            tf = Transform{ 0.66f, hy, -0.33f, Quat(DegToRad(-18.0f), y_axis), Vec3(hx * 2.0f, hy * 2.0f, hz * 2.0f) };
-            CreateBox(scene, o * tf, white);
-        }
-
-        // Lights
-        {
-            tf = Transform{ 0.5f, 0.995f, -0.5f, Quat(pi, x_axis), Vec3(0.25f) };
-            CreateRectXZ(scene, o * tf, light);
+            CreateCornellBox(scene, Transform{ Point3(i * 1.1f, j * 1.1f, 0) });
         }
     }
 }
 
 // Initialize PBO & CUDA interop capability
-void Init()
+static void Init()
 {
     ThreadPool::global_thread_pool.reset(new ThreadPool(std::thread::hardware_concurrency()));
 
@@ -148,23 +102,20 @@ void Init()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    for (int32 j = 0; j < 10; ++j)
-    {
-        for (int32 i = 0; i < 10; ++i)
-        {
-            CornellBox(Transform{ Point3(i * 1.1f, j * 1.1f, 0) });
-        }
-    }
+    BuildScene();
 
     player.position.Set(0.5f, 0.5f, 1.0f);
     player.speed = 1.5f;
     player.damping = 100.0f;
-    raytracer = new RayTracer(window, &scene, &camera);
+
+    options.max_bounces = 3;
+
+    raytracer = new RayTracer(window, &scene, &camera, &options);
 
     scene.Clear();
 }
 
-void Terminate()
+static void Terminate()
 {
     delete raytracer;
 }

@@ -129,4 +129,61 @@ void CreateBox(Scene& scene, const Transform& transform, MaterialIndex material,
     scene.AddMesh(m, material);
 }
 
+void CreateCornellBox(Scene& scene, const Transform& o)
+{
+    MaterialIndex white = scene.AddMaterial({ .reflectance{ .73f, .73f, .73f } });
+    MaterialIndex red = scene.AddMaterial({ .reflectance{ .65f, .05f, .05f } });
+    MaterialIndex green = scene.AddMaterial({ .reflectance{ .12f, .45f, .15f } });
+    MaterialIndex light = scene.AddMaterial({ .is_light{ true }, .reflectance{ 15.0f, 15.0f, 15.0f } });
+
+    // The Cornell box
+    {
+        // front
+        auto tf = Transform{ Vec3(0.5f, 0.5f, -1.0f), identity, Vec3(1.0f) };
+        CreateRectXY(scene, o * tf, white);
+
+        // left
+        tf = Transform{ Vec3(0.0f, 0.5f, -0.5f), identity, Vec3(1.0f) };
+        CreateRectYZ(scene, o * tf, red);
+
+        // right
+        tf = Transform{ Vec3(1.0f, 0.5f, -0.5f), Quat(pi, y_axis), Vec3(1.0f) };
+        CreateRectYZ(scene, o * tf, green);
+
+        // bottom
+        tf = Transform{ Vec3(0.5f, 0.0f, -0.5f), identity, Vec3(1.0f) };
+        CreateRectXZ(scene, o * tf, white);
+
+        // top
+        tf = Transform{ Vec3(0.5f, 1.0f, -0.5f), Quat(pi, x_axis), Vec3(1.0f) };
+        CreateRectXZ(scene, o * tf, white);
+
+        // Left block
+        {
+            Float hx = 0.14f;
+            Float hy = 0.28f;
+            Float hz = 0.14f;
+
+            tf = Transform{ 0.33f, hy, -0.66f, Quat(DegToRad(18.0f), y_axis), Vec3(hx * 2.0f, hy * 2.0f, hz * 2.0f) };
+            CreateBox(scene, o * tf, white);
+        }
+
+        // Right block
+        {
+            Float hx = 0.14f;
+            Float hy = 0.14f;
+            Float hz = 0.14f;
+
+            tf = Transform{ 0.66f, hy, -0.33f, Quat(DegToRad(-18.0f), y_axis), Vec3(hx * 2.0f, hy * 2.0f, hz * 2.0f) };
+            CreateBox(scene, o * tf, white);
+        }
+
+        // Lights
+        {
+            tf = Transform{ 0.5f, 0.995f, -0.5f, Quat(pi, x_axis), Vec3(0.25f) };
+            CreateRectXZ(scene, o * tf, light);
+        }
+    }
+}
+
 } // namespace cuwfrt

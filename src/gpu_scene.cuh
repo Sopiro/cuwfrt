@@ -26,7 +26,7 @@ struct GPUScene
     PrimitiveIndex* bvh_primitives;
     LinearBVHNode* bvh_nodes;
 
-    void Init(Scene* scene);
+    void Init(const Scene* scene);
     void Free();
 };
 

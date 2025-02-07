@@ -7,8 +7,11 @@
 namespace cuwfrt
 {
 
-void GPUScene::Init(Scene* scene)
+void GPUScene::Init(const Scene* scene)
 {
+    // Build BVH
+    BVH bvh(scene);
+
     size_t material_size = sizeof(Material) * scene->materials.size();
     cudaCheck(cudaMalloc(&materials, material_size));
     cudaCheck(cudaMemcpyAsync(materials, scene->materials.data(), material_size, cudaMemcpyHostToDevice));
@@ -40,8 +43,6 @@ void GPUScene::Init(Scene* scene)
     size_t light_indices_size = sizeof(int32) * scene->light_indices.size();
     cudaCheck(cudaMalloc(&light_indices, light_indices_size));
     cudaCheck(cudaMemcpyAsync(light_indices, scene->light_indices.data(), light_indices_size, cudaMemcpyHostToDevice));
-
-    BVH bvh(scene);
 
     size_t bvh_primitives_size = sizeof(PrimitiveIndex) * bvh.primitives.size();
     cudaCheck(cudaMalloc(&bvh_primitives, bvh_primitives_size));

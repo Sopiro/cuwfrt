@@ -6,6 +6,7 @@
 #include "cuda_api.h"
 #include "frame.h"
 #include "gpu_scene.cuh"
+#include "raytracer.cuh"
 #include "sampling.h"
 #include "triangle.h"
 
@@ -161,7 +162,9 @@ __KERNEL__ void RenderGradient(Vec4* pixels, Point2i res)
     pixels[index] = Vec4(x / (float)res.x, y / (float)res.y, 128 / 255.0f, 1.0f); // Simple gradient
 }
 
-__KERNEL__ void PathTrace(Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUScene scene, Camera camera, int32 time)
+__KERNEL__ void PathTrace(
+    Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUScene scene, Camera camera, Options options, int32 time
+)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -176,7 +179,6 @@ __KERNEL__ void PathTrace(Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, 
     Vec3 L(0);
 
     int32 bounce = 0;
-    const int32 max_bounces = 3;
     while (true)
     {
         Intersection isect;
@@ -199,7 +201,7 @@ __KERNEL__ void PathTrace(Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, 
             throughput *= m.reflectance;
         }
 
-        if (bounce++ >= max_bounces)
+        if (bounce++ >= options.max_bounces)
         {
             break;
         }

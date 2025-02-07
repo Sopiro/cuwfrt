@@ -24,11 +24,12 @@ public:
     std::vector<Vec3> normals;
     std::vector<Vec3> tangents;
     std::vector<Point2> texcoords;
+
     std::vector<MaterialIndex> material_indices;
+    std::vector<AABB> aabbs;
+
     std::vector<Point3i> indices;
     std::vector<int32> light_indices;
-
-    std::vector<AABB> aabbs;
 };
 
 } // namespace cuwfrt
