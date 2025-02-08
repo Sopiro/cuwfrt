@@ -81,6 +81,32 @@ public:
     Vec3 emission;
 };
 
+class alignas(16) MirrorMaterial : public Material
+{
+public:
+    MirrorMaterial(Vec3 reflectance)
+        : Material(Material::TypeIndexOf<MirrorMaterial>())
+        , reflectance{ reflectance }
+    {
+    }
+
+    __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const
+    {
+        WakNotUsed(isect);
+        WakNotUsed(wo);
+        return Vec3(0, 0, 0);
+    }
+
+    __GPU__ bool Scatter(SurfaceScattering* ss, const Intersection& isect, const Vec3& wo, Point2 u) const
+    {
+        ss->atten = reflectance;
+        ss->wi = Reflect(wo, isect.normal);
+        return true;
+    }
+
+    Vec3 reflectance;
+};
+
 inline __GPU__ Vec3 Material::Le(const Intersection& isect, const Vec3& wo) const
 {
     return Dispatch([&](auto mat) { return mat->Le(isect, wo); });

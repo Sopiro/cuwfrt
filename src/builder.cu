@@ -137,6 +137,7 @@ void CreateCornellBox(Scene& scene, const Transform& o)
     MaterialIndex red = scene.AddMaterial<DiffuseMaterial>(Vec3{ .65f, .05f, .05f });
     MaterialIndex green = scene.AddMaterial<DiffuseMaterial>(Vec3{ .12f, .45f, .15f });
     MaterialIndex light = scene.AddMaterial<DiffuseLightMaterial>(Vec3{ 15.0f, 15.0f, 15.0f });
+    // MaterialIndex mirror = scene.AddMaterial<MirrorMaterial>(Vec3{ 0.8f });
 
     // The Cornell box
     {

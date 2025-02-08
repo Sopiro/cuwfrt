@@ -94,9 +94,9 @@ static void Update(Float dt)
 
 static void BuildScene()
 {
-    for (int32 j = 0; j < 10; ++j)
+    for (int32 j = 0; j < 1; ++j)
     {
-        for (int32 i = 0; i < 10; ++i)
+        for (int32 i = 0; i < 1; ++i)
         {
             CreateCornellBox(scene, Transform{ Point3(i * 1.1f, j * 1.1f, 0) });
         }

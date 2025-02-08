@@ -16,10 +16,7 @@ public:
     TextureIndex AddTexture(TextureDesc tex);
 
     template <typename T, typename... Args>
-    MaterialIndex AddMaterial(Args&&... args)
-    {
-        return materials.emplace_back<T>(std::forward<Args>(args)...);
-    }
+    MaterialIndex AddMaterial(Args&&... args);
 
     void AddMesh(const Mesh& mat, MaterialIndex mi);
 
@@ -40,5 +37,11 @@ public:
     std::vector<Point3i> indices;
     std::vector<int32> light_indices;
 };
+
+template <typename T, typename... Args>
+inline MaterialIndex Scene::AddMaterial(Args&&... args)
+{
+    return materials.emplace_back<T>(std::forward<Args>(args)...);
+}
 
 } // namespace cuwfrt

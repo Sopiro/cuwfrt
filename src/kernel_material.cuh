@@ -10,7 +10,9 @@ namespace cuwfrt
 
 inline __GPU__ Material* GetMaterial(const GPUScene::Data* scene, MaterialIndex mi)
 {
-    return GetPolymorphicObject<Material, DiffuseMaterial, DiffuseLightMaterial>(scene->materials, scene->offsets, mi);
+    return GetPolymorphicObject<Material, DiffuseLightMaterial, DiffuseMaterial, MirrorMaterial>(
+        scene->materials, scene->offsets, mi
+    );
 }
 
 } // namespace cuwfrt

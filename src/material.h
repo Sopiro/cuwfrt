@@ -14,7 +14,7 @@ struct SurfaceScattering
     Vec3 wi;
 };
 
-using Materials = TypePack<class DiffuseMaterial, class DiffuseLightMaterial>;
+using Materials = TypePack<class DiffuseLightMaterial, class DiffuseMaterial, class MirrorMaterial>;
 
 class Material : public DynamicDispatcher<Materials>
 {
