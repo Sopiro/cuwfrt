@@ -1,7 +1,7 @@
 #pragma once
 
-#include "scene.h"
 #include "mesh.h"
+#include "scene.h"
 #include "triangle.h"
 
 namespace cuwfrt
@@ -20,13 +20,6 @@ TextureIndex Scene::AddTexture(TextureDesc tex)
     TextureIndex ti = int32(textures.size());
     textures.push_back(std::move(tex));
     return ti;
-}
-
-MaterialIndex Scene::AddMaterial(Material mat)
-{
-    MaterialIndex mi = int32(materials.size());
-    materials.push_back(std::move(mat));
-    return mi;
 }
 
 void Scene::AddMesh(const Mesh& mesh, MaterialIndex mi)
@@ -51,7 +44,7 @@ void Scene::AddMesh(const Mesh& mesh, MaterialIndex mi)
         indices.emplace_back(i0, i1, i2);
         material_indices.push_back(mi);
 
-        if (materials[mi].is_light)
+        if (materials[mi]->Is<DiffuseLightMaterial>())
         {
             light_indices.push_back(int32(indices.size() - 1));
         }
@@ -62,8 +55,8 @@ void Scene::AddMesh(const Mesh& mesh, MaterialIndex mi)
 
 void Scene::Clear()
 {
-    materials.resize(0);
-    materials.shrink_to_fit();
+    // materials.resize(0);
+    // materials.shrink_to_fit();
 
     positions.resize(0);
     positions.shrink_to_fit();

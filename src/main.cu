@@ -2,7 +2,7 @@
 
 #include "alzartak/camera.h"
 #include "alzartak/window.h"
-#include "builder.h"
+#include "builder.cuh"
 #include "parallel.h"
 
 using namespace alzartak;

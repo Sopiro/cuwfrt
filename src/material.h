@@ -1,16 +1,37 @@
 #pragma once
 
 #include "common.h"
-#include "indices.h"
+#include "polymorphic_vector.h"
 
 namespace cuwfrt
 {
 
-struct Material
+struct Intersection;
+
+struct SurfaceScattering
 {
-    bool is_light = false;
-    Vec3 reflectance = Vec3::zero;
-    TextureIndex texture = -1;
+    Vec3 atten;
+    Vec3 wi;
 };
+
+using Materials = TypePack<class DiffuseMaterial, class DiffuseLightMaterial>;
+
+class Material : public DynamicDispatcher<Materials>
+{
+public:
+    using Types = Materials;
+
+protected:
+    Material(int32 type_index)
+        : DynamicDispatcher{ type_index }
+    {
+    }
+
+public:
+    __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const;
+    __GPU__ bool Scatter(SurfaceScattering* ss, const Intersection& isect, const Vec3& wo, Point2 u) const;
+};
+
+using MaterialIndex = PolymorphicVector<Material>::Index;
 
 } // namespace cuwfrt

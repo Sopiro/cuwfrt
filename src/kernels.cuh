@@ -6,6 +6,7 @@
 #include "cuda_api.h"
 #include "frame.h"
 #include "gpu_scene.cuh"
+#include "kernel_material.cuh"
 #include "raytracer.cuh"
 #include "sampling.h"
 #include "triangle.h"
@@ -15,46 +16,13 @@
 using namespace cuwfrt;
 using namespace wak;
 
-inline __GPU__ Vec3 SampleTexture(const GPUScene::Data& scene, TextureIndex ti, Point2 uv)
-{
-    float4 tex_color = tex2D<float4>(scene.tex_objs[ti], uv.x, 1 - uv.y);
-    return Vec3(tex_color.x, tex_color.y, tex_color.z);
-}
-
-inline __GPU__ Point2 GetTexcoord(const GPUScene::Data& scene, PrimitiveIndex prim, const Vec3& uvw)
-{
-    Vec3i index = scene.indices[prim];
-    Point2 tc0 = scene.texcoords[index[0]];
-    Point2 tc1 = scene.texcoords[index[1]];
-    Point2 tc2 = scene.texcoords[index[2]];
-    return uvw.z * tc0 + uvw.x * tc1 + uvw.y * tc2;
-}
-
-inline __GPU__ Vec3 GetNormal(const GPUScene::Data& scene, PrimitiveIndex prim, const Vec3& uvw)
-{
-    Vec3i index = scene.indices[prim];
-    Vec3 n0 = scene.normals[index[0]];
-    Vec3 n1 = scene.normals[index[1]];
-    Vec3 n2 = scene.normals[index[2]];
-    return Normalize(uvw.z * n0 + uvw.x * n1 + uvw.y * n2);
-}
-
-inline __GPU__ Vec3 GetTangent(const GPUScene::Data& scene, PrimitiveIndex prim, const Vec3& uvw)
-{
-    Vec3i index = scene.indices[prim];
-    Vec3 t0 = scene.tangents[index[0]];
-    Vec3 t1 = scene.tangents[index[1]];
-    Vec3 t2 = scene.tangents[index[2]];
-    return Normalize(uvw.z * t0 + uvw.x * t1 + uvw.y * t2);
-}
-
 inline __GPU__ Vec3 SkyColor(Vec3 d)
 {
     Float a = 0.5 * (d.y + 1.0);
     return (1.0 - a) * Vec3(1.0, 1.0, 1.0) + a * Vec3(0.5, 0.7, 1.0);
 }
 
-__GPU__ bool Intersect(Intersection* closest, const GPUScene::Data& scene, Ray r, Float t_min, Float t_max)
+__GPU__ bool Intersect(Intersection* closest, const GPUScene::Data* scene, Ray r, Float t_min, Float t_max)
 {
     bool hit_closest = false;
 
@@ -69,7 +37,7 @@ __GPU__ bool Intersect(Intersection* closest, const GPUScene::Data& scene, Ray r
     {
         int32 index = stack[--stack_ptr];
 
-        LinearBVHNode& node = scene.bvh_nodes[index];
+        LinearBVHNode& node = scene->bvh_nodes[index];
 
         if (node.aabb.TestRay(r.o, t_min, t_max, inv_dir, is_dir_neg))
         {
@@ -78,13 +46,13 @@ __GPU__ bool Intersect(Intersection* closest, const GPUScene::Data& scene, Ray r
                 // Leaf node
                 for (int32 i = 0; i < node.primitive_count; ++i)
                 {
-                    PrimitiveIndex primitive = scene.bvh_primitives[node.primitives_offset + i];
-                    Vec3i index = scene.indices[primitive];
-                    Vec3 p0 = scene.positions[index[0]];
-                    Vec3 p1 = scene.positions[index[1]];
-                    Vec3 p2 = scene.positions[index[2]];
+                    PrimitiveIndex primitive = scene->bvh_primitives[node.primitives_offset + i];
+                    Vec3i index = scene->indices[primitive];
+                    Vec3 p0 = scene->positions[index[0]];
+                    Vec3 p1 = scene->positions[index[1]];
+                    Vec3 p2 = scene->positions[index[2]];
 
-                    Intersection isect;
+                    Intersection isect(scene);
                     bool hit = TriangleIntersect(&isect, p0, p1, p2, r, t_min, t_max);
                     if (hit)
                     {
@@ -106,7 +74,7 @@ __GPU__ bool Intersect(Intersection* closest, const GPUScene::Data& scene, Ray r
                 int32 child1 = index + 1;
                 int32 child2 = node.child2_offset;
 
-                if (is_dir_neg[scene.bvh_nodes[index].axis])
+                if (is_dir_neg[scene->bvh_nodes[index].axis])
                 {
                     stack[stack_ptr++] = child1;
                     stack[stack_ptr++] = child2;
@@ -123,7 +91,7 @@ __GPU__ bool Intersect(Intersection* closest, const GPUScene::Data& scene, Ray r
     return hit_closest;
 }
 
-__GPU__ bool IntersectAny(const GPUScene::Data& scene, Ray r, Float t_min, Float t_max)
+__GPU__ bool IntersectAny(const GPUScene::Data* scene, Ray r, Float t_min, Float t_max)
 {
     const Vec3 inv_dir(1 / r.d.x, 1 / r.d.y, 1 / r.d.z);
     const int32 is_dir_neg[3] = { int32(inv_dir.x < 0), int32(inv_dir.y < 0), int32(inv_dir.z < 0) };
@@ -136,7 +104,7 @@ __GPU__ bool IntersectAny(const GPUScene::Data& scene, Ray r, Float t_min, Float
     {
         int32 index = stack[--stack_ptr];
 
-        LinearBVHNode& node = scene.bvh_nodes[index];
+        LinearBVHNode& node = scene->bvh_nodes[index];
 
         if (node.aabb.TestRay(r.o, t_min, t_max, inv_dir, is_dir_neg))
         {
@@ -145,13 +113,13 @@ __GPU__ bool IntersectAny(const GPUScene::Data& scene, Ray r, Float t_min, Float
                 // Leaf node
                 for (int32 i = 0; i < node.primitive_count; ++i)
                 {
-                    PrimitiveIndex primitive = scene.bvh_primitives[node.primitives_offset + i];
-                    Vec3i index = scene.indices[primitive];
-                    Vec3 p0 = scene.positions[index[0]];
-                    Vec3 p1 = scene.positions[index[1]];
-                    Vec3 p2 = scene.positions[index[2]];
+                    PrimitiveIndex primitive = scene->bvh_primitives[node.primitives_offset + i];
+                    Vec3i index = scene->indices[primitive];
+                    Vec3 p0 = scene->positions[index[0]];
+                    Vec3 p1 = scene->positions[index[1]];
+                    Vec3 p2 = scene->positions[index[2]];
 
-                    Intersection isect;
+                    Intersection isect(scene);
                     bool hit = TriangleIntersectAny(p0, p1, p2, r, t_min, t_max);
                     if (hit)
                     {
@@ -168,7 +136,7 @@ __GPU__ bool IntersectAny(const GPUScene::Data& scene, Ray r, Float t_min, Float
                 int32 child1 = index + 1;
                 int32 child2 = node.child2_offset;
 
-                if (is_dir_neg[scene.bvh_nodes[index].axis])
+                if (is_dir_neg[scene->bvh_nodes[index].axis])
                 {
                     stack[stack_ptr++] = child1;
                     stack[stack_ptr++] = child2;
@@ -214,39 +182,38 @@ __KERNEL__ void PathTrace(
     int32 bounce = 0;
     while (true)
     {
-        Intersection isect;
-        bool found_intersection = Intersect(&isect, scene, ray, Ray::epsilon, infinity);
+        Intersection isect(&scene);
+        bool found_intersection = Intersect(&isect, &scene, ray, Ray::epsilon, infinity);
         if (!found_intersection)
         {
             L += throughput * SkyColor(ray.d);
             break;
         }
 
+        Vec3 wo = Normalize(-ray.d);
+
         MaterialIndex mi = scene.material_indices[isect.prim];
-        Material& m = scene.materials[mi];
-        if (m.is_light)
+        Material* m = GetMaterial(&scene, mi);
+
+        if (Vec3 Le = m->Le(isect, wo); Le != Vec3(0))
         {
-            L += throughput * m.reflectance;
+            L += throughput * Le;
             break;
-        }
-        else
-        {
-            if (m.texture != -1)
-            {
-                Point2 uv = GetTexcoord(scene, isect.prim, isect.uvw);
-                Vec3 tex_color = SampleTexture(scene, m.texture, uv);
-                throughput *= tex_color;
-            }
-            else
-            {
-                throughput *= m.reflectance;
-            }
         }
 
         if (bounce++ >= options.max_bounces)
         {
             break;
         }
+
+        SurfaceScattering ss;
+        Point2 u{ rng.NextFloat(), rng.NextFloat() };
+        if (!m->Scatter(&ss, isect, wo, u))
+        {
+            break;
+        }
+
+        throughput *= ss.atten;
 
         if (bounce > 1)
         {
@@ -261,12 +228,8 @@ __KERNEL__ void PathTrace(
             }
         }
 
-        Frame f(isect.normal);
-        Vec3 wi = SampleCosineHemisphere({ rng.NextFloat(), rng.NextFloat() });
-        wi = f.FromLocal(wi);
-
         ray.o = isect.point;
-        ray.d = wi;
+        ray.d = ss.wi;
 
         ++bounce;
     }

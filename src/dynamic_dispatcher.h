@@ -104,27 +104,27 @@ public:
     const int32 type_index;
 
     template <typename T>
-    bool Is() const
+    __CPU_GPU__ bool Is() const
     {
         return TypeIndexOf<T>() == type_index;
     }
 
     template <typename T>
-    T* Cast()
+    __CPU_GPU__ T* Cast()
     {
         WakAssert(Is<T>());
         return reinterpret_cast<T*>(this);
     }
 
     template <typename T>
-    const T* Cast() const
+    __CPU_GPU__ const T* Cast() const
     {
         WakAssert(Is<T>());
         return reinterpret_cast<const T*>(this);
     }
 
     template <typename Func>
-    auto Dispatch(Func&& func)
+    __CPU_GPU__ auto Dispatch(Func&& func)
     {
         using R = detail::ReturnType<Func, Types...>::type;
         using Handler = R (*)(void*, Func&&);
@@ -137,7 +137,7 @@ public:
     }
 
     template <typename Func>
-    auto Dispatch(Func&& func) const
+    __CPU_GPU__ auto Dispatch(Func&& func) const
     {
         using R = detail::ReturnType<Func, Types...>::type;
         using Handler = R (*)(void*, Func&&);

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "indices.h"
 #include "scene.h"
 
 namespace cuwfrt

@@ -2,8 +2,8 @@
 
 #include "common.h"
 #include "cuda_api.h"
+#include "gpu_scene.cuh"
 #include "intersection.h"
-#include "wak/ray.h"
 
 namespace cuwfrt
 {
@@ -120,6 +120,33 @@ inline __CPU_GPU__ static AABB TriangleAABB(const Point3& p0, const Point3& p1, 
     Point3 max = Max(p0, Max(p1, p2));
 
     return { min - aabb_epsilon, max + aabb_epsilon };
+}
+
+inline __CPU_GPU__ Point2 GetTexcoord(const GPUScene::Data* scene, PrimitiveIndex prim, const Vec3& uvw)
+{
+    Vec3i index = scene->indices[prim];
+    Point2 tc0 = scene->texcoords[index[0]];
+    Point2 tc1 = scene->texcoords[index[1]];
+    Point2 tc2 = scene->texcoords[index[2]];
+    return uvw.z * tc0 + uvw.x * tc1 + uvw.y * tc2;
+}
+
+inline __CPU_GPU__ Vec3 GetNormal(const GPUScene::Data* scene, PrimitiveIndex prim, const Vec3& uvw)
+{
+    Vec3i index = scene->indices[prim];
+    Vec3 n0 = scene->normals[index[0]];
+    Vec3 n1 = scene->normals[index[1]];
+    Vec3 n2 = scene->normals[index[2]];
+    return Normalize(uvw.z * n0 + uvw.x * n1 + uvw.y * n2);
+}
+
+inline __CPU_GPU__ Vec3 GetTangent(const GPUScene::Data* scene, PrimitiveIndex prim, const Vec3& uvw)
+{
+    Vec3i index = scene->indices[prim];
+    Vec3 t0 = scene->tangents[index[0]];
+    Vec3 t1 = scene->tangents[index[1]];
+    Vec3 t2 = scene->tangents[index[2]];
+    return Normalize(uvw.z * t0 + uvw.x * t1 + uvw.y * t2);
 }
 
 } // namespace cuwfrt

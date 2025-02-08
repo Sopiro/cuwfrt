@@ -1,4 +1,5 @@
 #include "bvh.cuh"
+#include "intersection.h"
 #include "parallel_for.h"
 #include "scene.h"
 #include "triangle.h"

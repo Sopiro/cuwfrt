@@ -1,8 +1,7 @@
 #pragma once
 
-#include "indices.h"
-#include "intersection.h"
 #include "parallel.h"
+#include "primitive.h"
 
 #include <memory>
 #include <memory_resource>
@@ -10,6 +9,7 @@
 namespace cuwfrt
 {
 
+struct Intersection;
 class Scene;
 
 struct alignas(32) LinearBVHNode

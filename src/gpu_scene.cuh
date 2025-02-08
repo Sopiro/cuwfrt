@@ -1,7 +1,6 @@
 #pragma once
 
 #include "bvh.cuh"
-#include "indices.h"
 #include "material.h"
 #include "texture.cuh"
 
@@ -15,7 +14,7 @@ struct GPUScene
     struct Data
     {
         cudaTextureObject_t* tex_objs = nullptr;
-        Material* materials = nullptr;
+        std::array<uint8_t*, Materials::count> materials = { nullptr };
 
         // Scene primitives
         Vec3* positions = nullptr;

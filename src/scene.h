@@ -1,8 +1,8 @@
 #pragma once
 
-#include "indices.h"
-#include "material.h"
+#include "materials.h"
 #include "mesh.h"
+#include "polymorphic_vector.h"
 #include "texture_desc.h"
 
 namespace cuwfrt
@@ -14,13 +14,19 @@ public:
     Scene() = default;
 
     TextureIndex AddTexture(TextureDesc tex);
-    MaterialIndex AddMaterial(Material mat);
+
+    template <typename T, typename... Args>
+    MaterialIndex AddMaterial(Args&&... args)
+    {
+        return materials.emplace_back<T>(std::forward<Args>(args)...);
+    }
+
     void AddMesh(const Mesh& mat, MaterialIndex mi);
 
     void Clear();
 
     std::vector<TextureDesc> textures;
-    std::vector<Material> materials;
+    PolymorphicVector<Material> materials;
 
     // Triangles
     std::vector<Point3> positions;

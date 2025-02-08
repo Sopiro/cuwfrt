@@ -9,9 +9,17 @@ namespace cuwfrt
 
 void GPUScene::Init(const Scene* scene)
 {
-    size_t material_size = sizeof(Material) * scene->materials.size();
-    cudaCheck(cudaMalloc(&data.materials, material_size));
-    cudaCheck(cudaMemcpyAsync(data.materials, scene->materials.data(), material_size, cudaMemcpyHostToDevice));
+    auto vectors = scene->materials.get_vectors();
+
+    for (size_t i = 0; i < Materials::count; ++i)
+    {
+        size_t size = vectors[i].size();
+        if (size > 0)
+        {
+            cudaCheck(cudaMalloc(&data.materials[i], size));
+            cudaCheck(cudaMemcpy(data.materials[i], vectors[i].data(), size, cudaMemcpyHostToDevice));
+        }
+    }
 
     size_t position_size = sizeof(Vec3) * scene->positions.size();
     cudaCheck(cudaMalloc(&data.positions, position_size));
@@ -74,7 +82,14 @@ void GPUScene::Init(const Scene* scene)
 
 void GPUScene::Free()
 {
-    cudaCheck(cudaFree(data.materials));
+    for (size_t i = 0; i < Materials::count; ++i)
+    {
+        if (data.materials[i])
+        {
+            cudaCheck(cudaFree(data.materials[i]));
+        }
+    }
+
     cudaCheck(cudaFree(data.positions));
     cudaCheck(cudaFree(data.normals));
     cudaCheck(cudaFree(data.tangents));
