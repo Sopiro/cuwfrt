@@ -202,12 +202,33 @@ public:
     {
     }
 
-    // Reserve space for 'capacity' elements of type T
     template <typename T>
     void reserve(size_t capacity)
     {
         constexpr int32 type_index = TypeIndexOf<T>();
         vectors[type_index].reserve(capacity * sizeof(T));
+    }
+
+    template <typename T>
+    void resize(size_t size)
+    {
+        constexpr int32 type_index = TypeIndexOf<T>();
+        vectors[type_index].resize(size);
+    }
+
+    template <typename T>
+    void shrink_to_fit(size_t size)
+    {
+        constexpr int32 type_index = TypeIndexOf<T>();
+        vectors[type_index].shrink_to_fit();
+    }
+
+    void clear()
+    {
+        for (auto v : vectors)
+        {
+            v.clear();
+        }
     }
 
     template <typename T>

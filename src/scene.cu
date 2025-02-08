@@ -55,8 +55,11 @@ void Scene::AddMesh(const Mesh& mesh, MaterialIndex mi)
 
 void Scene::Clear()
 {
-    // materials.resize(0);
-    // materials.shrink_to_fit();
+    for (auto v : materials.get_vectors())
+    {
+        v.resize(0);
+        v.shrink_to_fit();
+    }
 
     positions.resize(0);
     positions.shrink_to_fit();
