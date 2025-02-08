@@ -62,6 +62,13 @@ static void Update(Float dt)
         if (ImGui::SliderFloat("aperture", &aperture, 0.0f, 0.1f)) time = 0;
         ImGui::SetNextItemWidth(100);
         if (ImGui::SliderFloat("focus", &focus_dist, 0.0f, 10.0f)) time = 0;
+        if (ImGui::Button("Reset camera", { 100, 0 }))
+        {
+            vfov = 71;
+            aperture = 0;
+            focus_dist = 1;
+            time = 0;
+        }
     }
     ImGui::End();
 
