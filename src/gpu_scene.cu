@@ -11,13 +11,26 @@ void GPUScene::Init(const Scene* scene)
 {
     auto vectors = scene->materials.get_vectors();
 
-    for (size_t i = 0; i < Materials::count; ++i)
+    int32 offsets[Materials::count];
+    int32 total_size = 0;
+
+    for (int32 i = 0; i < vectors.size(); ++i)
+    {
+        offsets[i] = total_size;
+        total_size += int32(vectors[i].size());
+    }
+
+    size_t offsets_size = sizeof(int32) * Materials::count;
+    cudaCheck(cudaMalloc(&data.offsets, offsets_size));
+    cudaCheck(cudaMemcpyAsync(data.offsets, offsets, offsets_size, cudaMemcpyHostToDevice));
+
+    cudaCheck(cudaMalloc(&data.materials, total_size));
+    for (int32 i = 0; i < Materials::count; ++i)
     {
         size_t size = vectors[i].size();
         if (size > 0)
         {
-            cudaCheck(cudaMalloc(&data.materials[i], size));
-            cudaCheck(cudaMemcpy(data.materials[i], vectors[i].data(), size, cudaMemcpyHostToDevice));
+            cudaCheck(cudaMemcpyAsync(data.materials + offsets[i], vectors[i].data(), size, cudaMemcpyHostToDevice));
         }
     }
 
@@ -82,13 +95,8 @@ void GPUScene::Init(const Scene* scene)
 
 void GPUScene::Free()
 {
-    for (size_t i = 0; i < Materials::count; ++i)
-    {
-        if (data.materials[i])
-        {
-            cudaCheck(cudaFree(data.materials[i]));
-        }
-    }
+    cudaCheck(cudaFree(data.materials));
+    cudaCheck(cudaFree(data.offsets));
 
     cudaCheck(cudaFree(data.positions));
     cudaCheck(cudaFree(data.normals));

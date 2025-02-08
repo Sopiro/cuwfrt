@@ -20,7 +20,7 @@ static Options options;
 static Camera3D player;
 
 static int32 time = 0;
-static int32 max_samples = 64;
+static int32 max_samples = 1024;
 static Float vfov = 71;
 static Float aperture = 0;
 static Float focus_dist = 1;
@@ -121,7 +121,7 @@ static void Init()
 
     BuildScene();
 
-    player.position.Set(0.5f, 0.5f, 1.0f);
+    player.position.Set(5, 5, 10.0f);
     player.speed = 1.5f;
     player.damping = 100.0f;
 

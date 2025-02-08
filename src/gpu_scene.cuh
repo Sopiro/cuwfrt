@@ -13,8 +13,12 @@ struct GPUScene
 {
     struct Data
     {
+        // Textures
         cudaTextureObject_t* tex_objs = nullptr;
-        std::array<uint8_t*, Materials::count> materials = { nullptr };
+
+        // Materials
+        uint8* materials = nullptr;
+        int32* offsets = nullptr;
 
         // Scene primitives
         Vec3* positions = nullptr;
