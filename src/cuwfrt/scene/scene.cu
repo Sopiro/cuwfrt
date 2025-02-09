@@ -1,7 +1,7 @@
 #pragma once
 
-#include "cuwfrt/mesh.h"
-#include "cuwfrt/triangle.h"
+#include "cuwfrt/geometry/mesh.h"
+#include "cuwfrt/geometry/triangle.h"
 
 #include "scene.cuh"
 
