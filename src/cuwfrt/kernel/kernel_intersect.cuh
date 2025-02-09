@@ -1,21 +1,9 @@
 #pragma once
 
-#include "wak/hash.h"
-#include "wak/random.h"
-
-#include "cuwfrt/camera/camera.h"
-#include "cuwfrt/cuda_api.h"
-#include "cuwfrt/geometry/triangle.h"
-#include "cuwfrt/raytracer.cuh"
-#include "cuwfrt/scene/gpu_scene.cuh"
-#include "cuwfrt/shading/frame.h"
-#include "cuwfrt/shading/sampling.h"
-
-#include "kernel_material.cuh"
 #include "kernel_primitive.cuh"
 
-using namespace cuwfrt;
-using namespace wak;
+namespace cuwfrt
+{
 
 inline __GPU__ Vec3 SkyColor(Vec3 d)
 {
@@ -143,94 +131,4 @@ __GPU__ bool IntersectAny(const GPUScene* scene, Ray r, Float t_min, Float t_max
     return false;
 }
 
-__KERNEL__ void RenderGradient(Vec4* pixels, Point2i res)
-{
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
-    if (x >= res.x || y >= res.y) return;
-
-    int index = y * res.x + x;
-    pixels[index] = Vec4(x / (float)res.x, y / (float)res.y, 128 / 255.0f, 1.0f); // Simple gradient
-}
-
-__KERNEL__ void PathTraceNaive(
-    Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUScene scene, Camera camera, Options options, int32 time
-)
-{
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
-    if (x >= res.x || y >= res.y) return;
-
-    RNG rng(Hash(x, y, time));
-
-    // Generate primary ray
-    Ray ray;
-    camera.SampleRay(&ray, Point2i(x, y), { rng.NextFloat(), rng.NextFloat() }, { rng.NextFloat(), rng.NextFloat() });
-
-    Vec3 L(0), beta(1);
-
-    int32 bounce = 0;
-    while (true)
-    {
-        Intersection isect;
-        bool found_intersection = Intersect(&isect, &scene, ray, Ray::epsilon, infinity);
-        if (!found_intersection)
-        {
-            L += beta * SkyColor(ray.d);
-            break;
-        }
-
-        Vec3 wo = Normalize(-ray.d);
-
-        MaterialIndex mi = scene.material_indices[isect.prim];
-        Material* m = GetMaterial(&scene, mi);
-
-        if (Vec3 Le = m->Le(isect, wo); Le != Vec3(0))
-        {
-            L += beta * Le;
-            break;
-        }
-
-        if (bounce++ >= options.max_bounces)
-        {
-            break;
-        }
-
-        Scattering ss;
-        Point2 u{ rng.NextFloat(), rng.NextFloat() };
-        if (!m->SampleBSDF(&ss, &scene, isect, wo, u))
-        {
-            break;
-        }
-
-        beta *= ss.s * AbsDot(isect.normal, ss.wi) / ss.pdf;
-
-        if (bounce > 1)
-        {
-            Float rr = fmin(1.0f, fmax(beta.x, fmax(beta.y, beta.z)));
-            if (rng.NextFloat() < rr)
-            {
-                beta /= rr;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        ray.o = isect.point;
-        ray.d = ss.wi;
-
-        ++bounce;
-    }
-
-    int32 index = y * res.x + x;
-    sample_buffer[index] *= time;
-    sample_buffer[index] += Vec4(L, 0);
-    sample_buffer[index] /= time + 1.0f;
-
-    frame_buffer[index].x = std::pow(sample_buffer[index].x, 1 / 2.2f);
-    frame_buffer[index].y = std::pow(sample_buffer[index].y, 1 / 2.2f);
-    frame_buffer[index].z = std::pow(sample_buffer[index].z, 1 / 2.2f);
-    frame_buffer[index].w = 1.0f;
-}
+} // namespace cuwfrt

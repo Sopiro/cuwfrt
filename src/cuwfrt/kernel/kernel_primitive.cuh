@@ -1,6 +1,7 @@
 #pragma once
 
-#include "cuwfrt/geometry/triangle.h"
+#include "cuwfrt/common.h"
+#include "cuwfrt/scene/gpu_scene.cuh"
 
 namespace cuwfrt
 {
