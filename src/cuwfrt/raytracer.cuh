@@ -20,13 +20,15 @@ struct Options
     int32 max_bounces = 5;
 };
 
+using Kernel = void(Vec4*, Vec4*, Point2i, GPUScene, Camera, Options, int32);
+
 class RayTracer
 {
 public:
     RayTracer(Window* window, Scene* scene, Camera* camera, Options* options);
     ~RayTracer();
 
-    void RayTrace(int32 time);
+    void RayTrace(Kernel* kernel, int32 time);
     void DrawFrame();
 
 private:
@@ -36,7 +38,6 @@ private:
     void CreateFrameBuffer();
     void DeleteFrameBuffer();
 
-    void RenderGPU();
     void UpdateTexture();
     void RenderQuad();
 

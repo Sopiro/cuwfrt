@@ -6,6 +6,9 @@
 #include "cuwfrt/scene/builder.cuh"
 #include "cuwfrt/util/parallel.h"
 
+#include "cuwfrt/kernel/kernel_debug.cuh"
+#include "cuwfrt/kernel/kernel_pt_naive.cuh"
+
 using namespace alzartak;
 
 namespace cuwfrt
@@ -25,6 +28,11 @@ static int32 max_samples = 64;
 static Float vfov = 71;
 static Float aperture = 0;
 static Float focus_dist = 1;
+
+static const int32 num_kernels = 3;
+static const char* name[num_kernels] = { "Gradient", "Normal", "Pathtrace Naive" };
+static Kernel* kernels[num_kernels] = { RenderGradient, RenderNormal, PathTraceNaive };
+static int32 selection = 2;
 
 static Vec3 GetForward()
 {
@@ -46,6 +54,8 @@ static void Update(Float dt)
     window->BeginFrame(GL_COLOR_BUFFER_BIT);
 
     ImGuiIO& io = ImGui::GetIO();
+
+    // ImGui::ShowDemoWindow();
 
     ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
     if (ImGui::Begin("cuwfrt", NULL, ImGuiWindowFlags_AlwaysAutoResize))
@@ -70,6 +80,8 @@ static void Update(Float dt)
             focus_dist = 1;
             time = 0;
         }
+        ImGui::Separator();
+        if (ImGui::Combo("", &selection, name, num_kernels)) time = 0;
     }
     ImGui::End();
 
@@ -85,7 +97,7 @@ static void Update(Float dt)
     camera = Camera(player.position, GetForward(), y_axis, vfov, aperture, focus_dist, window->GetWindowSize());
     if (time < max_samples)
     {
-        raytracer->RayTrace(time);
+        raytracer->RayTrace(kernels[selection], time);
     }
 
     raytracer->DrawFrame();

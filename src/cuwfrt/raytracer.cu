@@ -1,7 +1,5 @@
-#include "raytracer.cuh"
-
 #include "cuda_error.cuh"
-#include "kernel/kernel_pt_naive.cuh"
+#include "raytracer.cuh"
 
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
@@ -89,29 +87,27 @@ void RayTracer::FreeGPUResources()
     gpu_data.Free();
 }
 
-void RayTracer::RayTrace(int32 t)
+void RayTracer::RayTrace(Kernel* kernel, int32 t)
 {
     time = t;
 
-    RenderGPU();
+    if (kernel)
+    {
+        // Render to the PBO using CUDA
+        const dim3 threads(8, 8);
+        const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
+
+        kernel<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_data.scene, *camera, *options, time);
+
+        cudaCheck(cudaGetLastError());
+        cudaCheck(cudaDeviceSynchronize());
+    }
 }
 
 void RayTracer::DrawFrame()
 {
     UpdateTexture();
     RenderQuad();
-}
-
-// Render to the PBO using CUDA
-void RayTracer::RenderGPU()
-{
-    const dim3 threads(8, 8);
-    const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-
-    PathTraceNaive<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_data.scene, *camera, *options, time);
-
-    cudaCheck(cudaGetLastError());
-    cudaCheck(cudaDeviceSynchronize());
 }
 
 // Copy PBO data to texture
