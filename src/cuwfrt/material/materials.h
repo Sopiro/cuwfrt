@@ -1,12 +1,12 @@
 #pragma once
 
-#include "frame.h"
-#include "intersection.h"
-#include "kernel_texture.cuh"
-#include "material.h"
-#include "sampling.h"
-#include "texture.cuh"
-#include "triangle.h"
+#include "cuwfrt/geometry/intersection.h"
+#include "cuwfrt/geometry/triangle.h"
+#include "cuwfrt/kernel/kernel_texture.cuh"
+#include "cuwfrt/material/material.h"
+#include "cuwfrt/shading/frame.h"
+#include "cuwfrt/shading/sampling.h"
+#include "cuwfrt/texture/texture.cuh"
 
 namespace cuwfrt
 {

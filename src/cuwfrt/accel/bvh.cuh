@@ -1,7 +1,7 @@
 #pragma once
 
-#include "parallel.h"
-#include "primitive.h"
+#include "cuwfrt/geometry/primitive.h"
+#include "cuwfrt/util/parallel.h"
 
 #include <memory>
 #include <memory_resource>

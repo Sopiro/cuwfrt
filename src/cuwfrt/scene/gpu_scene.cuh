@@ -1,8 +1,8 @@
 #pragma once
 
-#include "bvh.cuh"
-#include "material.h"
-#include "texture.cuh"
+#include "cuwfrt/accel/bvh.cuh"
+#include "cuwfrt/material/material.h"
+#include "cuwfrt/texture/texture.cuh"
 
 namespace cuwfrt
 {

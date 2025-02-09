@@ -1,9 +1,9 @@
 #pragma once
 
-#include "kernel_utils.cuh"
+#include "cuwfrt/material/materials.h"
+#include "cuwfrt/scene/gpu_scene.cuh"
 
-#include "gpu_scene.cuh"
-#include "materials.h"
+#include "kernel_utils.cuh"
 
 namespace cuwfrt
 {

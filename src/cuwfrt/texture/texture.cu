@@ -1,5 +1,6 @@
 #include "alzartak/image.h"
-#include "gpu_scene.cuh"
+#include "cuwfrt/scene/gpu_scene.cuh"
+
 #include "texture.cuh"
 
 namespace cuwfrt

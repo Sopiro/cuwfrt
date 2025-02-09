@@ -1,9 +1,10 @@
 #pragma once
 
-#include "common.h"
-#include "cuda_api.h"
-#include "gpu_scene.cuh"
 #include "intersection.h"
+
+#include "cuwfrt/common.h"
+#include "cuwfrt/cuda_api.h"
+#include "cuwfrt/scene/gpu_scene.cuh"
 
 namespace cuwfrt
 {

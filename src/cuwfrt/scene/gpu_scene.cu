@@ -1,10 +1,9 @@
-#include "cuda_api.h"
-#include "cuda_error.cuh"
+#include "cuwfrt/cuda_api.h"
+#include "cuwfrt/cuda_error.cuh"
+#include "cuwfrt/util/async_job.h"
 
 #include "gpu_scene.cuh"
-#include "scene.h"
-
-#include "async_job.h"
+#include "scene.cuh"
 
 namespace cuwfrt
 {

@@ -21,7 +21,7 @@ add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})
 # set(CMAKE_CUDA_ARCHITECTURES 70 75 80) # Volta, Turing, Ampere
 
 target_precompile_headers(${PROJECT_NAME} PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/common.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuwfrt/common.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -47,6 +47,6 @@ if(MSVC)
     )
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CUDAToolkit_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::cudart alzartak)

@@ -1,7 +1,8 @@
 #pragma once
 
-#include "common.h"
-#include "gpu_scene.cuh"
+#include "cuwfrt/common.h"
+#include "cuwfrt/scene/gpu_scene.cuh"
+
 #include "primitive.h"
 
 namespace cuwfrt

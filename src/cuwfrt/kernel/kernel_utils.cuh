@@ -1,7 +1,7 @@
 #pragma once
 
-#include "cuda_api.h"
-#include "polymorphic_vector.h"
+#include "cuwfrt/cuda_api.h"
+#include "cuwfrt/util/polymorphic_vector.h"
 
 namespace cuwfrt
 {

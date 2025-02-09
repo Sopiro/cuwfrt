@@ -1,9 +1,10 @@
 #pragma once
 
-#include "common.h"
-#include "cuda_api.h"
 #include "filters.h"
-#include "sampling.h"
+
+#include "cuwfrt/common.h"
+#include "cuwfrt/cuda_api.h"
+#include "cuwfrt/shading/sampling.h"
 
 namespace cuwfrt
 {

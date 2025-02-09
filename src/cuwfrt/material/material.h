@@ -1,7 +1,7 @@
 #pragma once
 
-#include "common.h"
-#include "polymorphic_vector.h"
+#include "cuwfrt/common.h"
+#include "cuwfrt/util/polymorphic_vector.h"
 
 namespace cuwfrt
 {

@@ -2,10 +2,11 @@
 
 #include "alzartak/window.h"
 
-#include "camera.h"
-#include "gpu_scene.cuh"
+#include "scene/gpu_scene.cuh"
+#include "scene/scene.cuh"
+
+#include "camera/camera.h"
 #include "quad_renderer.h"
-#include "scene.h"
 
 namespace cuwfrt
 {

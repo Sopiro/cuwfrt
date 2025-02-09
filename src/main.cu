@@ -1,9 +1,10 @@
-#include "raytracer.cuh"
-
 #include "alzartak/camera.h"
 #include "alzartak/window.h"
-#include "builder.cuh"
-#include "parallel.h"
+
+#include "cuwfrt/raytracer.cuh"
+
+#include "cuwfrt/scene/builder.cuh"
+#include "cuwfrt/util/parallel.h"
 
 using namespace alzartak;
 

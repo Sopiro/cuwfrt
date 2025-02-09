@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cuda_api.h"
+#include "cuwfrt/cuda_api.h"
 #include "dynamic_dispatcher.h"
 #include <array>
 #include <vector>

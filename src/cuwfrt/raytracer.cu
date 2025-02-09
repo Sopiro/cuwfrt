@@ -1,7 +1,7 @@
-#include "cuda_error.cuh"
-#include "kernels.cuh"
 #include "raytracer.cuh"
-#include "scene.h"
+
+#include "cuda_error.cuh"
+#include "kernel/kernels.cuh"
 
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>

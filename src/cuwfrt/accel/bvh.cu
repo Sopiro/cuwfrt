@@ -1,8 +1,9 @@
 #include "bvh.cuh"
-#include "intersection.h"
-#include "parallel_for.h"
-#include "scene.h"
-#include "triangle.h"
+
+#include "cuwfrt/geometry/intersection.h"
+#include "cuwfrt/geometry/triangle.h"
+#include "cuwfrt/scene/scene.cuh"
+#include "cuwfrt/util/parallel_for.h"
 
 #include <algorithm>
 

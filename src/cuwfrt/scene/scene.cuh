@@ -1,9 +1,9 @@
 #pragma once
 
-#include "materials.h"
-#include "mesh.h"
-#include "polymorphic_vector.h"
-#include "texture_desc.h"
+#include "cuwfrt/geometry/mesh.h"
+#include "cuwfrt/material/materials.h"
+#include "cuwfrt/texture/texture_desc.h"
+#include "cuwfrt/util/polymorphic_vector.h"
 
 namespace cuwfrt
 {

@@ -3,15 +3,15 @@
 #include "wak/hash.h"
 #include "wak/random.h"
 
-#include "cuda_api.h"
-#include "frame.h"
-#include "gpu_scene.cuh"
-#include "kernel_material.cuh"
-#include "raytracer.cuh"
-#include "sampling.h"
-#include "triangle.h"
+#include "cuwfrt/camera/camera.h"
+#include "cuwfrt/cuda_api.h"
+#include "cuwfrt/geometry/triangle.h"
+#include "cuwfrt/raytracer.cuh"
+#include "cuwfrt/scene/gpu_scene.cuh"
+#include "cuwfrt/shading/frame.h"
+#include "cuwfrt/shading/sampling.h"
 
-#include "camera.h"
+#include "kernel_material.cuh"
 
 using namespace cuwfrt;
 using namespace wak;
