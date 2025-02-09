@@ -19,7 +19,7 @@ using namespace wak;
 inline __GPU__ Vec3 SkyColor(Vec3 d)
 {
     Float a = 0.5 * (d.y + 1.0);
-    return (1.0 - a) * Vec3(1.0, 1.0, 1.0) + a * Vec3(0.5, 0.7, 1.0);
+    return Lerp(Vec3(0.5, 0.7, 1.0), Vec3(1.0, 1.0, 1.0), a);
 }
 
 __GPU__ bool Intersect(Intersection* closest, const GPUScene::Data* scene, Ray r, Float t_min, Float t_max)

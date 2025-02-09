@@ -131,13 +131,13 @@ void CreateBox(Scene& scene, const Transform& transform, MaterialIndex material,
 
 void CreateCornellBox(Scene& scene, const Transform& o)
 {
-    TextureIndex wak_tex = scene.AddTexture({ .filename = "C:/Users/sopir/Desktop/assets/wakdu.jpg", .non_color = false });
-    MaterialIndex wak = scene.AddMaterial<DiffuseMaterial>(wak_tex);
-    MaterialIndex white = scene.AddMaterial<DiffuseMaterial>(Vec3{ .73f, .73f, .73f });
-    MaterialIndex red = scene.AddMaterial<DiffuseMaterial>(Vec3{ .65f, .05f, .05f });
-    MaterialIndex green = scene.AddMaterial<DiffuseMaterial>(Vec3{ .12f, .45f, .15f });
-    MaterialIndex light = scene.AddMaterial<DiffuseLightMaterial>(Vec3{ 15.0f, 15.0f, 15.0f });
-    // MaterialIndex mirror = scene.AddMaterial<MirrorMaterial>(Vec3{ 0.8f });
+    static TextureIndex wak_tex = scene.AddTexture({ .filename = "C:/Users/sopir/Desktop/assets/wakdu.jpg", .non_color = false });
+    static MaterialIndex wak = scene.AddMaterial<DiffuseMaterial>(wak_tex);
+    static MaterialIndex white = scene.AddMaterial<DiffuseMaterial>(Vec3{ .73f, .73f, .73f });
+    static MaterialIndex red = scene.AddMaterial<DiffuseMaterial>(Vec3{ .65f, .05f, .05f });
+    static MaterialIndex green = scene.AddMaterial<DiffuseMaterial>(Vec3{ .12f, .45f, .15f });
+    static MaterialIndex light = scene.AddMaterial<DiffuseLightMaterial>(Vec3{ 15.0f, 15.0f, 15.0f });
+    // static MaterialIndex mirror = scene.AddMaterial<MirrorMaterial>(Vec3{ 0.8f });
 
     // The Cornell box
     {

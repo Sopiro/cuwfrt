@@ -37,11 +37,11 @@ public:
         {
             Point2 uv = GetTexcoord(isect.scene, isect.prim, isect.uvw);
             Vec3 tex = SampleTexture(isect.scene, TextureIndex(r.z), uv);
-            ss->atten = tex;
+            ss->atten = tex * inv_pi;
         }
         else
         {
-            ss->atten = r;
+            ss->atten = r * inv_pi;
         }
 
         Frame f(isect.normal);

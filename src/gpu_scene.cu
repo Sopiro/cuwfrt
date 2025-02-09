@@ -4,11 +4,20 @@
 #include "gpu_scene.cuh"
 #include "scene.h"
 
+#include "async_job.h"
+
 namespace cuwfrt
 {
 
 void GPUScene::Init(const Scene* scene)
 {
+    // Build BVH asynchronously
+    std::unique_ptr<BVH> bvh;
+    auto j = RunAsync([scene, &bvh]() {
+        bvh = std::make_unique<BVH>(scene);
+        return true;
+    });
+
     auto vectors = scene->materials.get_vectors();
 
     int32 offsets[Materials::count];
@@ -79,16 +88,15 @@ void GPUScene::Init(const Scene* scene)
     cudaCheck(cudaMalloc(&data.tex_objs, textures_size));
     cudaCheck(cudaMemcpyAsync(data.tex_objs, temp_tex_objs.data(), textures_size, cudaMemcpyHostToDevice));
 
-    // Build BVH
-    BVH bvh(scene);
+    j->Wait();
 
-    size_t bvh_primitives_size = sizeof(PrimitiveIndex) * bvh.primitives.size();
+    size_t bvh_primitives_size = sizeof(PrimitiveIndex) * bvh->primitives.size();
     cudaCheck(cudaMalloc(&data.bvh_primitives, bvh_primitives_size));
-    cudaCheck(cudaMemcpyAsync(data.bvh_primitives, bvh.primitives.data(), bvh_primitives_size, cudaMemcpyHostToDevice));
+    cudaCheck(cudaMemcpyAsync(data.bvh_primitives, bvh->primitives.data(), bvh_primitives_size, cudaMemcpyHostToDevice));
 
-    size_t bvh_nodes_size = sizeof(LinearBVHNode) * bvh.node_count;
+    size_t bvh_nodes_size = sizeof(LinearBVHNode) * bvh->node_count;
     cudaCheck(cudaMalloc(&data.bvh_nodes, bvh_nodes_size));
-    cudaCheck(cudaMemcpyAsync(data.bvh_nodes, bvh.nodes, bvh_nodes_size, cudaMemcpyHostToDevice));
+    cudaCheck(cudaMemcpyAsync(data.bvh_nodes, bvh->nodes, bvh_nodes_size, cudaMemcpyHostToDevice));
 
     cudaCheck(cudaDeviceSynchronize());
 }
