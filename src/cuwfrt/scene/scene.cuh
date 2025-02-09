@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cuwfrt/geometry/mesh.h"
+#include "cuwfrt/geometry/triangle_mesh.h"
 #include "cuwfrt/material/materials.h"
 #include "cuwfrt/texture/texture_desc.h"
 #include "cuwfrt/util/polymorphic_vector.h"
@@ -18,7 +18,7 @@ public:
     template <typename T, typename... Args>
     MaterialIndex AddMaterial(Args&&... args);
 
-    void AddMesh(const Mesh& mat, MaterialIndex mi);
+    void AddTriangleMesh(const TriangleMesh& mat, MaterialIndex mi);
 
     void Clear();
 
@@ -33,9 +33,9 @@ public:
 
     std::vector<MaterialIndex> material_indices;
     std::vector<AABB> aabbs;
-
     std::vector<Point3i> indices;
-    std::vector<int32> light_indices;
+
+    std::vector<PrimitiveIndex> light_indices;
 };
 
 template <typename T, typename... Args>

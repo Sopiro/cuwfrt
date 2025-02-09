@@ -14,10 +14,10 @@ struct Vertex
 };
 
 // Represents triangle mesh
-class Mesh
+class TriangleMesh
 {
 public:
-    Mesh(
+    TriangleMesh(
         std::vector<Point3> positions,
         std::vector<Vec3> normals,
         std::vector<Vec3> tangents,
@@ -25,7 +25,7 @@ public:
         std::vector<int32> indices,
         const Mat4& transform
     );
-    Mesh(const std::vector<Vertex>& vertices, std::vector<int32> indices, const Mat4& transform);
+    TriangleMesh(const std::vector<Vertex>& vertices, std::vector<int32> indices, const Mat4& transform);
 
     int32 triangle_count;
     std::vector<Point3> positions;

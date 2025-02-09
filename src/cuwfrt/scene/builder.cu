@@ -18,8 +18,8 @@ void CreateRectXY(Scene& scene, const Transform& transform, MaterialIndex materi
     auto vertices = std::vector<Vertex>{ v0, v1, v2, v3 };
     auto indices = std::vector<int32>{ 0, 1, 2, 0, 2, 3 };
 
-    Mesh m(vertices, indices, transform);
-    scene.AddMesh(m, material);
+    TriangleMesh m(vertices, indices, transform);
+    scene.AddTriangleMesh(m, material);
 }
 
 void CreateRectXZ(Scene& scene, const Transform& transform, MaterialIndex material, const Point2& tc)
@@ -38,8 +38,8 @@ void CreateRectXZ(Scene& scene, const Transform& transform, MaterialIndex materi
     auto vertices = std::vector<Vertex>{ v0, v1, v2, v3 };
     auto indices = std::vector<int32>{ 0, 1, 2, 0, 2, 3 };
 
-    Mesh m(vertices, indices, transform);
-    scene.AddMesh(m, material);
+    TriangleMesh m(vertices, indices, transform);
+    scene.AddTriangleMesh(m, material);
 }
 
 void CreateRectYZ(Scene& scene, const Transform& transform, MaterialIndex material, const Point2& tc)
@@ -57,8 +57,8 @@ void CreateRectYZ(Scene& scene, const Transform& transform, MaterialIndex materi
     auto vertices = std::vector<Vertex>{ v0, v1, v2, v3 };
     auto indices = std::vector<int32>{ 0, 1, 2, 0, 2, 3 };
 
-    Mesh m(vertices, indices, transform);
-    scene.AddMesh(m, material);
+    TriangleMesh m(vertices, indices, transform);
+    scene.AddTriangleMesh(m, material);
 }
 
 void CreateBox(Scene& scene, const Transform& transform, MaterialIndex material, const Point2& tc)
@@ -125,8 +125,8 @@ void CreateBox(Scene& scene, const Transform& transform, MaterialIndex material,
     };
     // clang-format on
 
-    Mesh m(vertices, indices, transform);
-    scene.AddMesh(m, material);
+    TriangleMesh m(vertices, indices, transform);
+    scene.AddTriangleMesh(m, material);
 }
 
 void CreateCornellBox(Scene& scene, const Transform& o)

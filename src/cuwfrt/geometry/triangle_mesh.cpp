@@ -1,11 +1,11 @@
 #pragma once
 
-#include "mesh.h"
+#include "triangle_mesh.h"
 
 namespace cuwfrt
 {
 
-Mesh::Mesh(
+TriangleMesh::TriangleMesh(
     std::vector<Point3> _positions,
     std::vector<Vec3> _normals,
     std::vector<Vec3> _tangents,
@@ -38,7 +38,7 @@ Mesh::Mesh(
     triangle_count = int32(indices.size() / 3);
 }
 
-Mesh::Mesh(const std::vector<Vertex>& vertices, std::vector<int32> _indices, const Mat4& transform)
+TriangleMesh::TriangleMesh(const std::vector<Vertex>& vertices, std::vector<int32> _indices, const Mat4& transform)
     : indices{ std::move(_indices) }
 {
     size_t count = vertices.size();

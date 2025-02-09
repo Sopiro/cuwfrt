@@ -1,7 +1,8 @@
 #pragma once
 
-#include "cuwfrt/geometry/mesh.h"
+#include "cuwfrt/geometry/primitive.h"
 #include "cuwfrt/geometry/triangle.h"
+#include "cuwfrt/geometry/triangle_mesh.h"
 
 #include "scene.cuh"
 
@@ -23,7 +24,7 @@ TextureIndex Scene::AddTexture(TextureDesc tex)
     return ti;
 }
 
-void Scene::AddMesh(const Mesh& mesh, MaterialIndex mi)
+void Scene::AddTriangleMesh(const TriangleMesh& mesh, MaterialIndex mi)
 {
     const int32 offset = int32(positions.size());
 
@@ -47,7 +48,7 @@ void Scene::AddMesh(const Mesh& mesh, MaterialIndex mi)
 
         if (materials[mi]->Is<DiffuseLightMaterial>())
         {
-            light_indices.push_back(int32(indices.size() - 1));
+            light_indices.push_back(PrimitiveIndex(indices.size() - 1));
         }
 
         aabbs.push_back(TriangleAABB(positions[i0], positions[i1], positions[i2]));
