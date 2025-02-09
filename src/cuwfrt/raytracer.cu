@@ -80,13 +80,13 @@ void RayTracer::DeleteFrameBuffer()
 void RayTracer::InitGPUResources()
 {
     std::cout << "Init GPU resources" << std::endl;
-    gpu_scene.Init(scene);
+    gpu_data.Init(scene);
 }
 
 void RayTracer::FreeGPUResources()
 {
     std::cout << "Free GPU resources" << std::endl;
-    gpu_scene.Free();
+    gpu_data.Free();
 }
 
 void RayTracer::RayTrace(int32 t)
@@ -108,7 +108,7 @@ void RayTracer::RenderGPU()
     const dim3 threads(8, 8);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    PathTrace<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_scene.data, *camera, *options, time);
+    PathTrace<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_data.scene, *camera, *options, time);
 
     cudaCheck(cudaGetLastError());
     cudaCheck(cudaDeviceSynchronize());

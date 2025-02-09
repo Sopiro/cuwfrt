@@ -54,7 +54,7 @@ private:
     Camera* camera;
     Options* options;
 
-    GPUScene gpu_scene;
+    GPUData gpu_data;
 
     int32 time;
 };

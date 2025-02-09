@@ -31,7 +31,7 @@ public:
         return Vec3(0, 0, 0);
     }
 
-    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUData* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
+    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
     {
         if (r.x < 0)
         {
@@ -69,7 +69,7 @@ public:
         return emission;
     }
 
-    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUData* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
+    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
     {
         WakNotUsed(ss);
         WakNotUsed(scene);
@@ -98,7 +98,7 @@ public:
         return Vec3(0, 0, 0);
     }
 
-    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUData* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
+    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
     {
         ss->atten = reflectance;
         ss->wi = Reflect(wo, isect.normal);
@@ -114,7 +114,7 @@ inline __GPU__ Vec3 Material::Le(const Intersection& isect, const Vec3& wo) cons
 }
 
 inline __GPU__ bool Material::Scatter(
-    SurfaceScattering* ss, const GPUData* scene, const Intersection& isect, const Vec3& wo, Point2 u
+    SurfaceScattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u
 ) const
 {
     return Dispatch([&](auto mat) { return mat->Scatter(ss, scene, isect, wo, u); });

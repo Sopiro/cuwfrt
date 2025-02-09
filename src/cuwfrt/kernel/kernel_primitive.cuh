@@ -6,7 +6,7 @@ namespace cuwfrt
 {
 
 inline __GPU__ bool TriangleIntersect(
-    Intersection* isect, const GPUData* scene, PrimitiveIndex prim, const Ray& ray, Float t_min, Float t_max
+    Intersection* isect, const GPUScene* scene, PrimitiveIndex prim, const Ray& ray, Float t_min, Float t_max
 )
 {
     Vec3i index = scene->indices[prim];
@@ -69,7 +69,7 @@ inline __GPU__ bool TriangleIntersect(
     return true;
 }
 
-inline __GPU__ bool TriangleIntersectAny(const GPUData* scene, PrimitiveIndex prim, const Ray& ray, Float t_min, Float t_max)
+inline __GPU__ bool TriangleIntersectAny(const GPUScene* scene, PrimitiveIndex prim, const Ray& ray, Float t_min, Float t_max)
 {
     Vec3i index = scene->indices[prim];
     Vec3 p0 = scene->positions[index[0]];
@@ -117,7 +117,7 @@ inline __GPU__ bool TriangleIntersectAny(const GPUData* scene, PrimitiveIndex pr
     return true;
 }
 
-inline __GPU__ Point2 GetTexcoord(const GPUData* scene, const Intersection& isect)
+inline __GPU__ Point2 GetTexcoord(const GPUScene* scene, const Intersection& isect)
 {
     Vec3i index = scene->indices[isect.prim];
     Point2 tc0 = scene->texcoords[index[0]];
@@ -126,7 +126,7 @@ inline __GPU__ Point2 GetTexcoord(const GPUData* scene, const Intersection& isec
     return isect.uvw.z * tc0 + isect.uvw.x * tc1 + isect.uvw.y * tc2;
 }
 
-inline __GPU__ Vec3 GetNormal(const GPUData* scene, const Intersection& isect)
+inline __GPU__ Vec3 GetNormal(const GPUScene* scene, const Intersection& isect)
 {
     Vec3i index = scene->indices[isect.prim];
     Vec3 n0 = scene->normals[index[0]];
@@ -135,7 +135,7 @@ inline __GPU__ Vec3 GetNormal(const GPUData* scene, const Intersection& isect)
     return Normalize(isect.uvw.z * n0 + isect.uvw.x * n1 + isect.uvw.y * n2);
 }
 
-inline __GPU__ Vec3 GetTangent(const GPUData* scene, const Intersection& isect)
+inline __GPU__ Vec3 GetTangent(const GPUScene* scene, const Intersection& isect)
 {
     Vec3i index = scene->indices[isect.prim];
     Vec3 t0 = scene->tangents[index[0]];

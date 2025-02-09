@@ -9,7 +9,7 @@ namespace cuwfrt
 
 class Scene;
 
-struct GPUData
+struct GPUScene
 {
     // Textures
     cudaTextureObject_t* tex_objs = nullptr;
@@ -19,22 +19,24 @@ struct GPUData
     int32* offsets = nullptr;
 
     // Scene primitives
-    Vec3* positions = nullptr;
+    Point3* positions = nullptr;
     Vec3* normals = nullptr;
     Vec3* tangents = nullptr;
     Vec2* texcoords = nullptr;
-    MaterialIndex* material_indices = nullptr;
     Vec3i* indices = nullptr;
-    int32* light_indices = nullptr;
+    MaterialIndex* material_indices = nullptr;
+
+    // Area lights
+    PrimitiveIndex* light_indices = nullptr;
 
     // BVH
     PrimitiveIndex* bvh_primitives;
     LinearBVHNode* bvh_nodes;
 };
 
-struct GPUScene
+struct GPUData
 {
-    GPUData data;
+    GPUScene scene;
     std::vector<Texture> textures;
 
     void Init(const Scene* scene);
