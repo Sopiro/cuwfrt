@@ -153,7 +153,7 @@ __KERNEL__ void RenderGradient(Vec4* pixels, Point2i res)
     pixels[index] = Vec4(x / (float)res.x, y / (float)res.y, 128 / 255.0f, 1.0f); // Simple gradient
 }
 
-__KERNEL__ void PathTrace(
+__KERNEL__ void PathTraceNaive(
     Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUScene scene, Camera camera, Options options, int32 time
 )
 {
@@ -163,11 +163,11 @@ __KERNEL__ void PathTrace(
 
     RNG rng(Hash(x, y, time));
 
+    // Generate primary ray
     Ray ray;
     camera.SampleRay(&ray, Point2i(x, y), { rng.NextFloat(), rng.NextFloat() }, { rng.NextFloat(), rng.NextFloat() });
 
-    Vec3 throughput(1);
-    Vec3 L(0);
+    Vec3 L(0), beta(1);
 
     int32 bounce = 0;
     while (true)
@@ -176,7 +176,7 @@ __KERNEL__ void PathTrace(
         bool found_intersection = Intersect(&isect, &scene, ray, Ray::epsilon, infinity);
         if (!found_intersection)
         {
-            L += throughput * SkyColor(ray.d);
+            L += beta * SkyColor(ray.d);
             break;
         }
 
@@ -187,7 +187,7 @@ __KERNEL__ void PathTrace(
 
         if (Vec3 Le = m->Le(isect, wo); Le != Vec3(0))
         {
-            L += throughput * Le;
+            L += beta * Le;
             break;
         }
 
@@ -196,21 +196,21 @@ __KERNEL__ void PathTrace(
             break;
         }
 
-        SurfaceScattering ss;
+        Scattering ss;
         Point2 u{ rng.NextFloat(), rng.NextFloat() };
-        if (!m->Scatter(&ss, &scene, isect, wo, u))
+        if (!m->SampleBSDF(&ss, &scene, isect, wo, u))
         {
             break;
         }
 
-        throughput *= ss.atten;
+        beta *= ss.s * AbsDot(isect.normal, ss.wi) / ss.pdf;
 
         if (bounce > 1)
         {
-            Float rr = fmin(1.0f, fmax(throughput.x, fmax(throughput.y, throughput.z)));
+            Float rr = fmin(1.0f, fmax(beta.x, fmax(beta.y, beta.z)));
             if (rng.NextFloat() < rr)
             {
-                throughput /= rr;
+                beta /= rr;
             }
             else
             {

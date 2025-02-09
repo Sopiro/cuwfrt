@@ -9,10 +9,14 @@ namespace cuwfrt
 struct Intersection;
 struct GPUScene;
 
-struct SurfaceScattering
+struct Scattering
 {
-    Vec3 atten;
+    Vec3 s;
+
     Vec3 wi;
+    Float pdf;
+
+    bool is_specular;
 };
 
 using Materials = TypePack<class DiffuseLightMaterial, class DiffuseMaterial, class MirrorMaterial>;
@@ -30,7 +34,7 @@ protected:
 
 public:
     __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const;
-    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const;
+    __GPU__ bool SampleBSDF(Scattering* s, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const;
 };
 
 using MaterialIndex = PolymorphicVector<Material>::Index;

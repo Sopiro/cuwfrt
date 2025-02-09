@@ -11,6 +11,35 @@
 namespace cuwfrt
 {
 
+class alignas(16) DiffuseLightMaterial : public Material
+{
+public:
+    DiffuseLightMaterial(Vec3 emission)
+        : Material(Material::TypeIndexOf<DiffuseLightMaterial>())
+        , emission{ emission }
+    {
+    }
+
+    __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const
+    {
+        WakNotUsed(isect);
+        WakNotUsed(wo);
+        return emission;
+    }
+
+    __GPU__ bool SampleBSDF(Scattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
+    {
+        WakNotUsed(ss);
+        WakNotUsed(scene);
+        WakNotUsed(isect);
+        WakNotUsed(wo);
+        WakNotUsed(u);
+        return false;
+    }
+
+    Vec3 emission;
+};
+
 class alignas(16) DiffuseMaterial : public Material
 {
 public:
@@ -31,55 +60,29 @@ public:
         return Vec3(0, 0, 0);
     }
 
-    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
+    __GPU__ bool SampleBSDF(Scattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
     {
         if (r.x < 0)
         {
             Point2 uv = GetTexcoord(scene, isect);
             Vec3 tex = SampleTexture(scene, TextureIndex(r.z), uv);
-            ss->atten = tex * inv_pi;
+            ss->s = tex * inv_pi;
         }
         else
         {
-            ss->atten = r * inv_pi;
+            ss->s = r * inv_pi;
         }
 
         Frame f(isect.normal);
-        ss->wi = f.FromLocal(SampleCosineHemisphere(u));
+        Vec3 wi = SampleCosineHemisphere(u);
+        ss->pdf = CosineHemispherePDF(wi.z);
+        ss->wi = f.FromLocal(wi);
+        ss->is_specular = false;
 
         return true;
     }
 
     Vec3 r;
-};
-
-class alignas(16) DiffuseLightMaterial : public Material
-{
-public:
-    DiffuseLightMaterial(Vec3 emission)
-        : Material(Material::TypeIndexOf<DiffuseLightMaterial>())
-        , emission{ emission }
-    {
-    }
-
-    __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const
-    {
-        WakNotUsed(isect);
-        WakNotUsed(wo);
-        return emission;
-    }
-
-    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
-    {
-        WakNotUsed(ss);
-        WakNotUsed(scene);
-        WakNotUsed(isect);
-        WakNotUsed(wo);
-        WakNotUsed(u);
-        return false;
-    }
-
-    Vec3 emission;
 };
 
 class alignas(16) MirrorMaterial : public Material
@@ -98,10 +101,13 @@ public:
         return Vec3(0, 0, 0);
     }
 
-    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
+    __GPU__ bool SampleBSDF(Scattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
     {
-        ss->atten = reflectance;
+        ss->s = reflectance;
         ss->wi = Reflect(wo, isect.normal);
+        ss->pdf = 1;
+        ss->is_specular = true;
+
         return true;
     }
 
@@ -113,11 +119,11 @@ inline __GPU__ Vec3 Material::Le(const Intersection& isect, const Vec3& wo) cons
     return Dispatch([&](auto mat) { return mat->Le(isect, wo); });
 }
 
-inline __GPU__ bool Material::Scatter(
-    SurfaceScattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u
+inline __GPU__ bool Material::SampleBSDF(
+    Scattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u
 ) const
 {
-    return Dispatch([&](auto mat) { return mat->Scatter(ss, scene, isect, wo, u); });
+    return Dispatch([&](auto mat) { return mat->SampleBSDF(ss, scene, isect, wo, u); });
 }
 
 } // namespace cuwfrt
