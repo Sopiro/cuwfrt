@@ -65,7 +65,7 @@ BVH::BVH(const Scene* scene)
     node_count = total_nodes;
 }
 
-BVH::~BVH() noexcept
+BVH::~BVH()
 {
     delete nodes;
 }
@@ -311,89 +311,6 @@ int32 BVH::FlattenBVH(BuildNode* node, int32* offset)
     }
 
     return node_offset;
-}
-
-bool BVH::Intersect(Intersection* isect, const Ray& ray, Float t_min, Float t_max) const
-{
-    struct Callback
-    {
-        const Scene* scene;
-        Intersection* closest;
-        bool hit_closest;
-        Float t;
-
-        Float RayCastCallback(const Ray& ray, Float t_min, Float t_max, PrimitiveIndex object)
-        {
-            Intersection isect;
-            Vec3i index = scene->indices[object];
-            Vec3 p0 = scene->positions[index[0]];
-            Vec3 p1 = scene->positions[index[1]];
-            Vec3 p2 = scene->positions[index[2]];
-
-            bool hit = TriangleIntersect(&isect, p0, p1, p2, ray, t_min, t_max);
-
-            if (hit)
-            {
-                WakAssert(isect.t <= t);
-                hit_closest = true;
-                t = isect.t;
-                *closest = isect;
-            }
-
-            // Keep traverse with smaller bounds
-            return t;
-        }
-    } callback;
-
-    callback.scene = scene;
-    callback.closest = isect;
-    callback.hit_closest = false;
-    callback.t = t_max;
-
-    RayCast(ray, t_min, t_max, &callback);
-
-    return callback.hit_closest;
-}
-
-bool BVH::IntersectAny(const Ray& ray, Float t_min, Float t_max) const
-{
-    struct Callback
-    {
-        const Scene* scene;
-        bool hit_any;
-
-        Float RayCastCallback(const Ray& ray, Float t_min, Float t_max, PrimitiveIndex object)
-        {
-            Intersection isect;
-            Vec3i index = scene->indices[object];
-            Vec3 p0 = scene->positions[index[0]];
-            Vec3 p1 = scene->positions[index[1]];
-            Vec3 p2 = scene->positions[index[2]];
-            bool hit = TriangleIntersect(&isect, p0, p1, p2, ray, t_min, t_max);
-
-            if (hit)
-            {
-                hit_any = true;
-
-                // Stop traversal
-                return t_min;
-            }
-
-            return t_max;
-        }
-    } callback;
-
-    callback.scene = scene;
-    callback.hit_any = false;
-
-    RayCast(ray, t_min, t_max, &callback);
-
-    return callback.hit_any;
-}
-
-AABB BVH::GetAABB() const
-{
-    return nodes[0].aabb;
 }
 
 } // namespace cuwfrt

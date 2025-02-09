@@ -7,6 +7,7 @@ namespace cuwfrt
 {
 
 struct Intersection;
+struct GPUData;
 
 struct SurfaceScattering
 {
@@ -29,7 +30,7 @@ protected:
 
 public:
     __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const;
-    __GPU__ bool Scatter(SurfaceScattering* ss, const Intersection& isect, const Vec3& wo, Point2 u) const;
+    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUData* scene, const Intersection& isect, const Vec3& wo, Point2 u) const;
 };
 
 using MaterialIndex = PolymorphicVector<Material>::Index;

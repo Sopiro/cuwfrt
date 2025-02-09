@@ -1,7 +1,7 @@
 #pragma once
 
 #include "cuwfrt/geometry/intersection.h"
-#include "cuwfrt/geometry/triangle.h"
+#include "cuwfrt/kernel/kernel_primitive.cuh"
 #include "cuwfrt/kernel/kernel_texture.cuh"
 #include "cuwfrt/material/material.h"
 #include "cuwfrt/shading/frame.h"
@@ -31,12 +31,12 @@ public:
         return Vec3(0, 0, 0);
     }
 
-    __GPU__ bool Scatter(SurfaceScattering* ss, const Intersection& isect, const Vec3& wo, Point2 u) const
+    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUData* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
     {
         if (r.x < 0)
         {
-            Point2 uv = GetTexcoord(isect.scene, isect.prim, isect.uvw);
-            Vec3 tex = SampleTexture(isect.scene, TextureIndex(r.z), uv);
+            Point2 uv = GetTexcoord(scene, isect);
+            Vec3 tex = SampleTexture(scene, TextureIndex(r.z), uv);
             ss->atten = tex * inv_pi;
         }
         else
@@ -69,9 +69,10 @@ public:
         return emission;
     }
 
-    __GPU__ bool Scatter(SurfaceScattering* ss, const Intersection& isect, const Vec3& wo, Point2 u) const
+    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUData* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
     {
         WakNotUsed(ss);
+        WakNotUsed(scene);
         WakNotUsed(isect);
         WakNotUsed(wo);
         WakNotUsed(u);
@@ -97,7 +98,7 @@ public:
         return Vec3(0, 0, 0);
     }
 
-    __GPU__ bool Scatter(SurfaceScattering* ss, const Intersection& isect, const Vec3& wo, Point2 u) const
+    __GPU__ bool Scatter(SurfaceScattering* ss, const GPUData* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
     {
         ss->atten = reflectance;
         ss->wi = Reflect(wo, isect.normal);
@@ -112,9 +113,11 @@ inline __GPU__ Vec3 Material::Le(const Intersection& isect, const Vec3& wo) cons
     return Dispatch([&](auto mat) { return mat->Le(isect, wo); });
 }
 
-inline __GPU__ bool Material::Scatter(SurfaceScattering* ss, const Intersection& isect, const Vec3& wo, Point2 u) const
+inline __GPU__ bool Material::Scatter(
+    SurfaceScattering* ss, const GPUData* scene, const Intersection& isect, const Vec3& wo, Point2 u
+) const
 {
-    return Dispatch([&](auto mat) { return mat->Scatter(ss, isect, wo, u); });
+    return Dispatch([&](auto mat) { return mat->Scatter(ss, scene, isect, wo, u); });
 }
 
 } // namespace cuwfrt

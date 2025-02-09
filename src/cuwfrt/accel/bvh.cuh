@@ -30,11 +30,7 @@ class BVH
 {
 public:
     BVH(const Scene* scene);
-    ~BVH() noexcept;
-
-    AABB GetAABB() const;
-    bool Intersect(Intersection* out_isect, const Ray& ray, Float t_min, Float t_max) const;
-    bool IntersectAny(const Ray& ray, Float t_min, Float t_max) const;
+    ~BVH();
 
 private:
     friend class Scene;

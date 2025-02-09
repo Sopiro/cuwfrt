@@ -12,6 +12,7 @@
 #include "cuwfrt/shading/sampling.h"
 
 #include "kernel_material.cuh"
+#include "kernel_primitive.cuh"
 
 using namespace cuwfrt;
 using namespace wak;
@@ -22,7 +23,7 @@ inline __GPU__ Vec3 SkyColor(Vec3 d)
     return Lerp(Vec3(0.5, 0.7, 1.0), Vec3(1.0, 1.0, 1.0), a);
 }
 
-__GPU__ bool Intersect(Intersection* closest, const GPUScene::Data* scene, Ray r, Float t_min, Float t_max)
+__GPU__ bool Intersect(Intersection* closest, const GPUData* scene, Ray r, Float t_min, Float t_max)
 {
     bool hit_closest = false;
 
@@ -46,19 +47,14 @@ __GPU__ bool Intersect(Intersection* closest, const GPUScene::Data* scene, Ray r
                 // Leaf node
                 for (int32 i = 0; i < node.primitive_count; ++i)
                 {
-                    PrimitiveIndex primitive = scene->bvh_primitives[node.primitives_offset + i];
-                    Vec3i index = scene->indices[primitive];
-                    Vec3 p0 = scene->positions[index[0]];
-                    Vec3 p1 = scene->positions[index[1]];
-                    Vec3 p2 = scene->positions[index[2]];
-
-                    Intersection isect(scene);
-                    bool hit = TriangleIntersect(&isect, p0, p1, p2, r, t_min, t_max);
+                    PrimitiveIndex prim = scene->bvh_primitives[node.primitives_offset + i];
+                    Intersection isect;
+                    bool hit = TriangleIntersect(&isect, scene, prim, r, t_min, t_max);
                     if (hit)
                     {
                         WakAssert(isect.t <= t_max);
                         hit_closest = true;
-                        isect.prim = primitive;
+                        isect.prim = prim;
 
                         t_max = isect.t;
                         *closest = isect;
@@ -91,7 +87,7 @@ __GPU__ bool Intersect(Intersection* closest, const GPUScene::Data* scene, Ray r
     return hit_closest;
 }
 
-__GPU__ bool IntersectAny(const GPUScene::Data* scene, Ray r, Float t_min, Float t_max)
+__GPU__ bool IntersectAny(const GPUData* scene, Ray r, Float t_min, Float t_max)
 {
     const Vec3 inv_dir(1 / r.d.x, 1 / r.d.y, 1 / r.d.z);
     const int32 is_dir_neg[3] = { int32(inv_dir.x < 0), int32(inv_dir.y < 0), int32(inv_dir.z < 0) };
@@ -113,14 +109,8 @@ __GPU__ bool IntersectAny(const GPUScene::Data* scene, Ray r, Float t_min, Float
                 // Leaf node
                 for (int32 i = 0; i < node.primitive_count; ++i)
                 {
-                    PrimitiveIndex primitive = scene->bvh_primitives[node.primitives_offset + i];
-                    Vec3i index = scene->indices[primitive];
-                    Vec3 p0 = scene->positions[index[0]];
-                    Vec3 p1 = scene->positions[index[1]];
-                    Vec3 p2 = scene->positions[index[2]];
-
-                    Intersection isect(scene);
-                    bool hit = TriangleIntersectAny(p0, p1, p2, r, t_min, t_max);
+                    PrimitiveIndex prim = scene->bvh_primitives[node.primitives_offset + i];
+                    bool hit = TriangleIntersectAny(scene, prim, r, t_min, t_max);
                     if (hit)
                     {
                         return true;
@@ -164,7 +154,7 @@ __KERNEL__ void RenderGradient(Vec4* pixels, Point2i res)
 }
 
 __KERNEL__ void PathTrace(
-    Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUScene::Data scene, Camera camera, Options options, int32 time
+    Vec4* sample_buffer, Vec4* frame_buffer, Point2i res, GPUData scene, Camera camera, Options options, int32 time
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -182,7 +172,7 @@ __KERNEL__ void PathTrace(
     int32 bounce = 0;
     while (true)
     {
-        Intersection isect(&scene);
+        Intersection isect;
         bool found_intersection = Intersect(&isect, &scene, ray, Ray::epsilon, infinity);
         if (!found_intersection)
         {
@@ -208,7 +198,7 @@ __KERNEL__ void PathTrace(
 
         SurfaceScattering ss;
         Point2 u{ rng.NextFloat(), rng.NextFloat() };
-        if (!m->Scatter(&ss, isect, wo, u))
+        if (!m->Scatter(&ss, &scene, isect, wo, u))
         {
             break;
         }
