@@ -140,8 +140,6 @@ __KERNEL__ void PathTraceNEE(
                 break;
             }
         }
-
-        bounce++;
     }
 
     int32 index = y * res.x + x;

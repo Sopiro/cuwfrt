@@ -124,7 +124,7 @@ static void Init()
 {
     ThreadPool::global_thread_pool.reset(new ThreadPool(std::thread::hardware_concurrency()));
 
-    window = Window::Init(1280, 720, "cuda RTRT");
+    window = Window::Init(1024, 768, "cuda RTRT");
 
     // Enable culling
     glEnable(GL_CULL_FACE);

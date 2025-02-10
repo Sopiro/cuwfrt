@@ -72,22 +72,12 @@ public:
 
     __GPU__ bool SampleBSDF(Scattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
     {
-        if (r.x < 0)
-        {
-            Point2 uv = triangle::GetTexcoord(scene, isect);
-            Vec3 tex = SampleTexture(scene, TextureIndex(r.z), uv);
-            ss->s = tex * inv_pi;
-        }
-        else
-        {
-            ss->s = r * inv_pi;
-        }
-
         Frame f(isect.normal);
         Vec3 wi = SampleCosineHemisphere(u);
         ss->pdf = CosineHemispherePDF(wi.z);
         ss->wi = f.FromLocal(wi);
         ss->is_specular = false;
+        ss->s = BSDF(scene, isect);
 
         return true;
     }
@@ -115,6 +105,14 @@ public:
             return Vec3(0);
         }
 
+        return BSDF(scene, isect);
+    }
+
+    Vec3 r;
+
+private:
+    __GPU__ Vec3 BSDF(const GPUScene* scene, const Intersection& isect) const
+    {
         if (r.x < 0)
         {
             Point2 uv = triangle::GetTexcoord(scene, isect);
@@ -126,8 +124,6 @@ public:
             return r * inv_pi;
         }
     }
-
-    Vec3 r;
 };
 
 class alignas(16) MirrorMaterial : public Material

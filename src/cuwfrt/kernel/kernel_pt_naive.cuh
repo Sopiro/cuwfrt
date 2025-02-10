@@ -87,8 +87,6 @@ __KERNEL__ void PathTraceNaive(
 
         ray.o = isect.point;
         ray.d = ss.wi;
-
-        ++bounce;
     }
 
     int32 index = y * res.x + x;
