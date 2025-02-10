@@ -28,6 +28,7 @@ struct GPUScene
 
     // Area lights
     PrimitiveIndex* light_indices = nullptr;
+    int32 light_count;
 
     // BVH
     PrimitiveIndex* bvh_primitives;

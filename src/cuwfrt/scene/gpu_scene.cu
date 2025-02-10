@@ -72,6 +72,8 @@ void GPUData::Init(const Scene* cpu_scene)
     cudaCheck(cudaMalloc(&scene.light_indices, light_indices_size));
     cudaCheck(cudaMemcpyAsync(scene.light_indices, cpu_scene->light_indices.data(), light_indices_size, cudaMemcpyHostToDevice));
 
+    scene.light_count = int32(cpu_scene->light_indices.size());
+
     // Create textures on GPU memory
     std::vector<cudaTextureObject_t> temp_tex_objs;
     temp_tex_objs.reserve(cpu_scene->textures.size());

@@ -3,7 +3,17 @@
 #include "cuwfrt/common.h"
 #include "cuwfrt/scene/gpu_scene.cuh"
 
-namespace cuwfrt::triangle
+namespace cuwfrt
+{
+
+struct PrimitiveSample
+{
+    Point3 point;
+    Vec3 normal;
+    Float pdf;
+};
+
+namespace triangle
 {
 
 inline __GPU__ bool Intersect(
@@ -145,13 +155,6 @@ inline __GPU__ Vec3 GetTangent(const GPUScene* scene, const Intersection& isect)
     return Normalize(isect.uvw.z * t0 + isect.uvw.x * t1 + isect.uvw.y * t2);
 }
 
-struct PrimitiveSample
-{
-    Point3 point;
-    Vec3 normal;
-    Float pdf;
-};
-
 inline __GPU__ PrimitiveSample Sample(const GPUScene* scene, PrimitiveIndex prim, Point2 u0)
 {
     Vec3i index = scene->indices[prim];
@@ -199,4 +202,35 @@ inline __GPU__ PrimitiveSample Sample(const GPUScene* scene, PrimitiveIndex prim
     return sample;
 }
 
-} // namespace cuwfrt::triangle
+inline __GPU__ Float PDF(const GPUScene* scene, PrimitiveIndex prim, const Intersection& hit_is, const Ray& hit_ray)
+{
+    Float distance_squared = hit_is.t * hit_is.t * Length2(hit_ray.d);
+    Float cosine = std::fabs(Dot(hit_ray.d, hit_is.normal) / Length(hit_ray.d));
+
+    Vec3i index = scene->indices[prim];
+    Vec3 p0 = scene->positions[index[0]];
+    Vec3 p1 = scene->positions[index[1]];
+    Vec3 p2 = scene->positions[index[2]];
+
+    Vec3 e1 = p1 - p0;
+    Vec3 e2 = p2 - p0;
+
+    Float area = 0.5f * Length(Cross(e1, e2));
+
+    return distance_squared / (cosine * area);
+}
+
+inline __GPU__ Float EvaluatePDF(const GPUScene* scene, PrimitiveIndex prim, const Ray& ray)
+{
+    Intersection isect;
+    if (!Intersect(&isect, scene, prim, ray, Ray::epsilon, infinity))
+    {
+        return 0;
+    }
+
+    return PDF(scene, prim, isect, ray);
+}
+
+} // namespace triangle
+
+} // namespace cuwfrt

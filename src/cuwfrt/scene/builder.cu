@@ -24,7 +24,6 @@ void CreateRectXY(Scene& scene, const Transform& transform, MaterialIndex materi
 
 void CreateRectXZ(Scene& scene, const Transform& transform, MaterialIndex material, const Point2& tc)
 {
-
     Point3 p0 = { -0.5, 0.0, 0.5 };
     Point3 p1 = { 0.5, 0.0, 0.5 };
     Point3 p2 = { 0.5, 0.0, -0.5 };
@@ -137,7 +136,7 @@ void CreateCornellBox(Scene& scene, const Transform& o)
     static MaterialIndex red = scene.AddMaterial<DiffuseMaterial>(Vec3{ .65f, .05f, .05f });
     static MaterialIndex green = scene.AddMaterial<DiffuseMaterial>(Vec3{ .12f, .45f, .15f });
     static MaterialIndex light = scene.AddMaterial<DiffuseLightMaterial>(Vec3{ 15.0f, 15.0f, 15.0f });
-    // static MaterialIndex mirror = scene.AddMaterial<MirrorMaterial>(Vec3{ 0.8f });
+    static MaterialIndex mirror = scene.AddMaterial<MirrorMaterial>(Vec3{ 0.8f });
 
     // The Cornell box
     {

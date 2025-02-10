@@ -9,6 +9,7 @@
 #include "cuwfrt/kernel/kernel_ao.cuh"
 #include "cuwfrt/kernel/kernel_debug.cuh"
 #include "cuwfrt/kernel/kernel_pt_naive.cuh"
+#include "cuwfrt/kernel/kernel_pt_nee.cuh"
 
 using namespace alzartak;
 
@@ -30,10 +31,10 @@ static Float vfov = 71;
 static Float aperture = 0;
 static Float focus_dist = 1;
 
-static const int32 num_kernels = 4;
-static const char* name[num_kernels] = { "Gradient", "Normal", "AO", "Pathtrace Naive" };
-static Kernel* kernels[num_kernels] = { RenderGradient, RenderNormal, RaytraceAO, PathTraceNaive };
-static int32 selection = 3;
+static const int32 num_kernels = 5;
+static const char* name[num_kernels] = { "Gradient", "Normal", "AO", "Pathtrace Naive", "Pathtrace NEE" };
+static Kernel* kernels[num_kernels] = { RenderGradient, RenderNormal, RaytraceAO, PathTraceNaive, PathTraceNEE };
+static int32 selection = 4;
 
 static Vec3 GetForward()
 {
