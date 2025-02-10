@@ -49,3 +49,10 @@ endif()
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CUDAToolkit_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::cudart alzartak)
+
+add_custom_command(
+    TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+    ${CMAKE_CURRENT_SOURCE_DIR}/../res/
+    ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/res/
+)

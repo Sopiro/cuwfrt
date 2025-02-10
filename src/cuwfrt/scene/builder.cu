@@ -130,7 +130,7 @@ void CreateBox(Scene& scene, const Transform& transform, MaterialIndex material,
 
 void CreateCornellBox(Scene& scene, const Transform& o)
 {
-    static TextureIndex wak_tex = scene.AddTexture({ .filename = "C:/Users/sopir/Desktop/assets/wakdu.jpg", .non_color = false });
+    static TextureIndex wak_tex = scene.AddTexture({ .filename = "res/wakdu.jpg", .non_color = false });
     static MaterialIndex wak = scene.AddMaterial<DiffuseMaterial>(wak_tex);
     static MaterialIndex white = scene.AddMaterial<DiffuseMaterial>(Vec3{ .73f, .73f, .73f });
     static MaterialIndex red = scene.AddMaterial<DiffuseMaterial>(Vec3{ .65f, .05f, .05f });
