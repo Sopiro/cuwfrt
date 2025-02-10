@@ -37,7 +37,7 @@ __GPU__ bool Intersect(Intersection* closest, const GPUScene* scene, Ray r, Floa
                 {
                     PrimitiveIndex prim = scene->bvh_primitives[node.primitives_offset + i];
                     Intersection isect;
-                    bool hit = TriangleIntersect(&isect, scene, prim, r, t_min, t_max);
+                    bool hit = triangle::Intersect(&isect, scene, prim, r, t_min, t_max);
                     if (hit)
                     {
                         WakAssert(isect.t <= t_max);
@@ -98,7 +98,7 @@ __GPU__ bool IntersectAny(const GPUScene* scene, Ray r, Float t_min, Float t_max
                 for (int32 i = 0; i < node.primitive_count; ++i)
                 {
                     PrimitiveIndex prim = scene->bvh_primitives[node.primitives_offset + i];
-                    bool hit = TriangleIntersectAny(scene, prim, r, t_min, t_max);
+                    bool hit = triangle::IntersectAny(scene, prim, r, t_min, t_max);
                     if (hit)
                     {
                         return true;

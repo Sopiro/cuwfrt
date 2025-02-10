@@ -3,10 +3,10 @@
 #include "cuwfrt/common.h"
 #include "cuwfrt/scene/gpu_scene.cuh"
 
-namespace cuwfrt
+namespace cuwfrt::triangle
 {
 
-inline __GPU__ bool TriangleIntersect(
+inline __GPU__ bool Intersect(
     Intersection* isect, const GPUScene* scene, PrimitiveIndex prim, const Ray& ray, Float t_min, Float t_max
 )
 {
@@ -18,8 +18,8 @@ inline __GPU__ bool TriangleIntersect(
     Vec3 e1 = p1 - p0;
     Vec3 e2 = p2 - p0;
 
-    Float l = Length(ray.d);
-    Vec3 d = ray.d / l;
+    Vec3 d = ray.d;
+    Float l = d.Normalize();
     Vec3 pvec = Cross(d, e2);
 
     Float det = Dot(e1, pvec);
@@ -70,7 +70,7 @@ inline __GPU__ bool TriangleIntersect(
     return true;
 }
 
-inline __GPU__ bool TriangleIntersectAny(const GPUScene* scene, PrimitiveIndex prim, const Ray& ray, Float t_min, Float t_max)
+inline __GPU__ bool IntersectAny(const GPUScene* scene, PrimitiveIndex prim, const Ray& ray, Float t_min, Float t_max)
 {
     Vec3i index = scene->indices[prim];
     Vec3 p0 = scene->positions[index[0]];
@@ -145,4 +145,58 @@ inline __GPU__ Vec3 GetTangent(const GPUScene* scene, const Intersection& isect)
     return Normalize(isect.uvw.z * t0 + isect.uvw.x * t1 + isect.uvw.y * t2);
 }
 
-} // namespace cuwfrt
+struct PrimitiveSample
+{
+    Point3 point;
+    Vec3 normal;
+    Float pdf;
+};
+
+inline __GPU__ PrimitiveSample Sample(const GPUScene* scene, PrimitiveIndex prim, Point2 u0)
+{
+    Vec3i index = scene->indices[prim];
+    Vec3 p0 = scene->positions[index[0]];
+    Vec3 p1 = scene->positions[index[1]];
+    Vec3 p2 = scene->positions[index[2]];
+
+    Vec3 e1 = p1 - p0;
+    Vec3 e2 = p2 - p0;
+
+    Float u = u0[0];
+    Float v = u0[1];
+
+    if (u + v > 1)
+    {
+        u = 1 - u;
+        v = 1 - v;
+    }
+
+    PrimitiveSample sample;
+    sample.normal = Cross(e1, e2);
+    sample.point = p0 + e1 * u + e2 * v;
+
+    Float area = sample.normal.Normalize() * 0.5f;
+    sample.pdf = 1 / area;
+
+    return sample;
+}
+
+inline __GPU__ PrimitiveSample Sample(const GPUScene* scene, PrimitiveIndex prim, const Point3& ref, Point2 u)
+{
+    PrimitiveSample sample = triangle::Sample(scene, prim, u);
+
+    Vec3 d = sample.point - ref;
+    Float distance_squared = Dot(d, d);
+
+    Float cosine = Dot(d, sample.normal) / std::sqrt(distance_squared);
+    if (cosine < 0)
+    {
+        cosine = -cosine;
+    }
+
+    sample.pdf *= distance_squared / cosine; // Convert to solid angle measure
+
+    return sample;
+}
+
+} // namespace cuwfrt::triangle

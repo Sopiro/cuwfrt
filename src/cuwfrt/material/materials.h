@@ -64,7 +64,7 @@ public:
     {
         if (r.x < 0)
         {
-            Point2 uv = GetTexcoord(scene, isect);
+            Point2 uv = triangle::GetTexcoord(scene, isect);
             Vec3 tex = SampleTexture(scene, TextureIndex(r.z), uv);
             ss->s = tex * inv_pi;
         }
