@@ -23,7 +23,7 @@ inline __GPU__ Vec3 SampleDirectLight(
 {
     int32 light_index = std::min(int32(u0 * scene->light_count), scene->light_count - 1);
     PrimitiveIndex light = scene->light_indices[light_index];
-    Material* light_mat = GetMaterial(scene, scene->material_indices[light]);
+    Material* light_mat = GetMaterial(scene, light);
     Float light_sample_pmf = 1.0f / scene->light_count;
 
     PrimitiveSample primitive_sample = triangle::Sample(scene, light, isect.point, u12);
@@ -79,14 +79,16 @@ __KERNEL__ void PathTraceNEE(
 
         if (!found_intersection)
         {
-            L += beta * SkyColor(ray.d);
+            if (options.render_sky)
+            {
+                L += beta * SkyColor(ray.d);
+            }
             break;
         }
 
         Vec3 wo = Normalize(-ray.d);
 
-        MaterialIndex mi = scene.material_indices[isect.prim];
-        Material* mat = GetMaterial(&scene, mi);
+        Material* mat = GetMaterial(&scene, isect.prim);
 
         if (Vec3 Le = mat->Le(isect, wo); Le != Vec3(0))
         {

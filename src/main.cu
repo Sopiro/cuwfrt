@@ -83,6 +83,7 @@ static void Update(Float dt)
             time = 0;
         }
         ImGui::Separator();
+        if (ImGui::Checkbox("Render sky", &options.render_sky)) time = 0;
         if (ImGui::Combo("", &selection, name, num_kernels)) time = 0;
     }
     ImGui::End();

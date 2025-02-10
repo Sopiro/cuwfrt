@@ -41,14 +41,16 @@ __KERNEL__ void PathTraceNaive(
         bool found_intersection = Intersect(&isect, &scene, ray, Ray::epsilon, infinity);
         if (!found_intersection)
         {
-            L += beta * SkyColor(ray.d);
+            if (options.render_sky)
+            {
+                L += beta * SkyColor(ray.d);
+            }
             break;
         }
 
         Vec3 wo = Normalize(-ray.d);
 
-        MaterialIndex mi = scene.material_indices[isect.prim];
-        Material* m = GetMaterial(&scene, mi);
+        Material* m = GetMaterial(&scene, isect.prim);
 
         if (Vec3 Le = m->Le(isect, wo); Le != Vec3(0))
         {

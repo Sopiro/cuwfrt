@@ -22,8 +22,6 @@ public:
 
     __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const
     {
-        WakNotUsed(isect);
-        WakNotUsed(wo);
         if (isect.front_face)
         {
             return emission;
@@ -36,11 +34,6 @@ public:
 
     __GPU__ bool SampleBSDF(Scattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
     {
-        WakNotUsed(ss);
-        WakNotUsed(scene);
-        WakNotUsed(isect);
-        WakNotUsed(wo);
-        WakNotUsed(u);
         return false;
     }
 
@@ -74,7 +67,7 @@ public:
 
     __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const
     {
-        return Vec3(0, 0, 0);
+        return Vec3(0);
     }
 
     __GPU__ bool SampleBSDF(Scattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const
@@ -148,9 +141,7 @@ public:
 
     __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const
     {
-        WakNotUsed(isect);
-        WakNotUsed(wo);
-        return Vec3(0, 0, 0);
+        return Vec3(0);
     }
 
     __GPU__ bool SampleBSDF(Scattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const

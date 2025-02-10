@@ -18,6 +18,7 @@ class Scene;
 struct Options
 {
     int32 max_bounces = 5;
+    bool render_sky = true;
 };
 
 using Kernel = void(Vec4*, Vec4*, Point2i, GPUScene, Camera, Options, int32);
