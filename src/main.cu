@@ -1,5 +1,4 @@
 #include "alzartak/camera.h"
-#include "alzartak/window.h"
 
 #include "cuwfrt/raytracer.cuh"
 
@@ -51,8 +50,20 @@ static Vec3 GetForward()
 
 static void Update(Float dt)
 {
-    ++time;
+    window->PollEvents();
 
+    if (player.UpdateInput(dt))
+    {
+        if (Length2(player.velocity) < 0.5f)
+        {
+            player.velocity.SetZero();
+        }
+        time = 0;
+    }
+}
+
+static void Render()
+{
     window->BeginFrame(GL_COLOR_BUFFER_BIT);
 
     ImGuiIO& io = ImGui::GetIO();
@@ -63,7 +74,7 @@ static void Update(Float dt)
     if (ImGui::Begin("cuwfrt", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::Text("%d fps", int32(io.Framerate));
-        ImGui::Text("%d samples", std::min(time, max_samples));
+        ImGui::Text("%d samples", std::min(time + 1, max_samples));
         ImGui::SetNextItemWidth(100);
         if (ImGui::SliderInt("max bounces", &options.max_bounces, 0, 64)) time = 0;
         ImGui::SetNextItemWidth(100);
@@ -88,15 +99,6 @@ static void Update(Float dt)
     }
     ImGui::End();
 
-    if (player.UpdateInput(dt))
-    {
-        if (Length2(player.velocity) < 0.5f)
-        {
-            player.velocity.SetZero();
-        }
-        time = 0;
-    }
-
     camera = Camera(player.position, GetForward(), y_axis, vfov, aperture, focus_dist, window->GetWindowSize());
     if (time < max_samples)
     {
@@ -106,6 +108,8 @@ static void Update(Float dt)
     raytracer->DrawFrame();
 
     window->EndFrame();
+
+    ++time;
 }
 
 static void BuildScene()
@@ -215,7 +219,6 @@ static void SetImGuiStyle()
 #endif
 }
 
-// Initialize PBO & CUDA interop capability
 static void Init()
 {
     ThreadPool::global_thread_pool.reset(new ThreadPool(std::thread::hardware_concurrency()));
@@ -266,20 +269,24 @@ int main()
 
     auto last_time = std::chrono::steady_clock::now();
     const float target_frame_time = 1.0f / window->GetRefreshRate();
-    float delta_time = 0;
+    float passed_time = 0;
 
     while (!window->ShouldClose())
     {
         auto current_time = std::chrono::steady_clock::now();
         std::chrono::duration<float> duration = current_time - last_time;
         float elapsed_time = duration.count();
+        passed_time += elapsed_time;
         last_time = current_time;
 
-        delta_time += elapsed_time;
-        if (delta_time > target_frame_time)
+        if (passed_time > target_frame_time)
         {
-            Update(delta_time);
-            delta_time = 0;
+            while (passed_time > target_frame_time)
+            {
+                Update(target_frame_time);
+                passed_time -= target_frame_time;
+            }
+            Render();
         }
     }
 

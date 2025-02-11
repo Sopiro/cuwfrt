@@ -34,6 +34,7 @@ RayTracer::~RayTracer()
     DeleteFrameBuffer();
 }
 
+// Initialize PBO & CUDA interop capability
 void RayTracer::CreateFrameBuffer()
 {
     WakAssert(sizeof(float4) == sizeof(Vec4f));
