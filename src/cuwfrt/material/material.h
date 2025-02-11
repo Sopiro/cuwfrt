@@ -19,7 +19,7 @@ struct Scattering
     bool is_specular;
 };
 
-using Materials = TypePack<class DiffuseLightMaterial, class DiffuseMaterial, class MirrorMaterial>;
+using Materials = TypePack<class DiffuseLightMaterial, class DiffuseMaterial, class MirrorMaterial, class DielectricMaterial>;
 
 class Material : public DynamicDispatcher<Materials>
 {
