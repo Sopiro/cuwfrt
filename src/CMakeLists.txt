@@ -6,9 +6,19 @@ set(ALZARTAK_BUILD_SAMPLE OFF)
 FetchContent_Declare(
     alzartak
     GIT_REPOSITORY "https://github.com/Sopiro/alzartak.git"
-    GIT_TAG master
+    GIT_TAG v1.0.0
 )
 FetchContent_MakeAvailable(alzartak)
+
+# Include tinygltf
+set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
+set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
+FetchContent_Declare(
+    tinygltf
+    GIT_REPOSITORY "https://github.com/syoyo/tinygltf.git"
+    GIT_TAG v2.9.5
+)
+FetchContent_Populate(tinygltf)
 
 file(GLOB_RECURSE SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/*.cu)
 file(GLOB_RECURSE HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h ${CMAKE_CURRENT_SOURCE_DIR}/*.cuh)
@@ -46,7 +56,7 @@ if(MSVC)
     )
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CUDAToolkit_INCLUDE_DIRS})
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${tinygltf_SOURCE_DIR})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::cudart alzartak)
 
