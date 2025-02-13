@@ -10,6 +10,8 @@
 #include "cuwfrt/kernel/kernel_pt_naive.cuh"
 #include "cuwfrt/kernel/kernel_pt_nee.cuh"
 
+#include "cuwfrt/loader/loader.cuh"
+
 using namespace alzartak;
 
 namespace cuwfrt
@@ -33,7 +35,7 @@ static Float focus_dist = 1;
 static const int32 num_kernels = 5;
 static const char* name[num_kernels] = { "Gradient", "Normal", "AO", "Pathtrace Naive", "Pathtrace NEE" };
 static Kernel* kernels[num_kernels] = { RenderGradient, RenderNormal, RaytraceAO, PathTraceNaive, PathTraceNEE };
-static int32 selection = 4;
+static int32 selection = 1;
 
 static Vec3 GetForward()
 {
@@ -95,7 +97,7 @@ static void Render()
         }
         ImGui::Separator();
         if (ImGui::Checkbox("Render sky", &options.render_sky)) time = 0;
-        if (ImGui::Combo("", &selection, name, num_kernels)) time = 0;
+        if (ImGui::Combo("##Render sky", &selection, name, num_kernels)) time = 0;
     }
     ImGui::End();
 
@@ -121,6 +123,14 @@ static void BuildScene()
             CreateCornellBox(scene, Transform{ Point3(i * 1.1f, j * 1.1f, 0) });
         }
     }
+
+    static MaterialIndex white = scene.AddMaterial<DiffuseMaterial>(Vec3{ .73f, .73f, .73f });
+    SetFallbackMaterial(white);
+
+    LoadGLTF(
+        scene, "Z:/dev/cpp_workspace/raytracer/res/sponza/glTF/Sponza.gltf", Transform(Vec3(0, 0, 0), identity, Vec3(0.01f))
+    );
+    // LoadGLTF(scene, "C:/Users/sopir/Desktop/untitled.gltf", identity);
 }
 
 static void SetImGuiStyle()

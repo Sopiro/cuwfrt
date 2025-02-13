@@ -38,14 +38,17 @@ static bool LoadMesh(Scene& scene, tinygltf::Model& model, tinygltf::Mesh& mesh,
         tinygltf::Accessor& position_accessor = model.accessors[position_index];
         tinygltf::BufferView& position_buffer_view = model.bufferViews[position_accessor.bufferView];
         tinygltf::Buffer& position_buffer = model.buffers[position_buffer_view.buffer];
+
         // normal
         tinygltf::Accessor& normal_accessor = model.accessors[normal_index];
         tinygltf::BufferView& normal_buffer_view = model.bufferViews[normal_accessor.bufferView];
         tinygltf::Buffer& normal_buffer = model.buffers[normal_buffer_view.buffer];
+
         // texcoord
         tinygltf::Accessor& texcoord_accessor = model.accessors[texcoord_index];
         tinygltf::BufferView& texcoord_buffer_view = model.bufferViews[texcoord_accessor.bufferView];
         tinygltf::Buffer& texcoord_buffer = model.buffers[texcoord_buffer_view.buffer];
+
         // indices
         tinygltf::Accessor& indices_accessor = model.accessors[indices_index];
         tinygltf::BufferView& indices_buffer_view = model.bufferViews[indices_accessor.bufferView];
@@ -57,9 +60,26 @@ static bool LoadMesh(Scene& scene, tinygltf::Model& model, tinygltf::Mesh& mesh,
         std::vector<Vec2> texcoords(texcoord_accessor.count);
         std::vector<int32> indices(indices_accessor.count);
 
-        memcpy(positions.data(), position_buffer.data.data() + position_buffer_view.byteOffset, position_buffer_view.byteLength);
-        memcpy(normals.data(), normal_buffer.data.data() + normal_buffer_view.byteOffset, normal_buffer_view.byteLength);
-        memcpy(texcoords.data(), texcoord_buffer.data.data() + texcoord_buffer_view.byteOffset, texcoord_buffer_view.byteLength);
+        size_t position_size = tinygltf::GetComponentSizeInBytes(position_accessor.componentType) *
+                               tinygltf::GetNumComponentsInType(position_accessor.type);
+        memcpy(
+            positions.data(), position_buffer.data.data() + position_buffer_view.byteOffset + position_accessor.byteOffset,
+            position_accessor.count * position_size
+        );
+
+        size_t normal_size = tinygltf::GetComponentSizeInBytes(normal_accessor.componentType) *
+                             tinygltf::GetNumComponentsInType(normal_accessor.type);
+        memcpy(
+            normals.data(), normal_buffer.data.data() + normal_buffer_view.byteOffset + normal_accessor.byteOffset,
+            normal_accessor.count * normal_size
+        );
+
+        size_t texcoord_size = tinygltf::GetComponentSizeInBytes(texcoord_accessor.componentType) *
+                               tinygltf::GetNumComponentsInType(texcoord_accessor.type);
+        memcpy(
+            texcoords.data(), texcoord_buffer.data.data() + texcoord_buffer_view.byteOffset + texcoord_accessor.byteOffset,
+            texcoord_accessor.count * texcoord_size
+        );
 
         if (tangent_index != -1)
         {
@@ -67,7 +87,20 @@ static bool LoadMesh(Scene& scene, tinygltf::Model& model, tinygltf::Mesh& mesh,
             tinygltf::Accessor& tangent_accessor = model.accessors[tangent_index];
             tinygltf::BufferView& tangent_buffer_view = model.bufferViews[tangent_accessor.bufferView];
             tinygltf::Buffer& tangent_buffer = model.buffers[tangent_buffer_view.buffer];
-            memcpy(tangents.data(), tangent_buffer.data.data() + tangent_buffer_view.byteOffset, tangent_buffer_view.byteLength);
+
+            size_t tangent_size = tinygltf::GetNumComponentsInType(tangent_accessor.type) *
+                                  tinygltf::GetComponentSizeInBytes(tangent_accessor.componentType);
+
+            std::vector<Vec4> temp(tangent_accessor.count);
+            memcpy(
+                temp.data(), tangent_buffer.data.data() + tangent_buffer_view.byteOffset + tangent_accessor.byteOffset,
+                tangent_accessor.count * tangent_size
+            );
+
+            for (size_t i = 0; i < tangent_accessor.count; ++i)
+            {
+                tangents[i].Set(temp[i].x, temp[i].y, temp[i].z);
+            }
         }
         else
         {
@@ -83,38 +116,45 @@ static bool LoadMesh(Scene& scene, tinygltf::Model& model, tinygltf::Mesh& mesh,
             return false;
         }
 
-        switch (tinygltf::GetComponentSizeInBytes(indices_accessor.componentType))
+        size_t indices_size = tinygltf::GetComponentSizeInBytes(indices_accessor.componentType);
+        switch (indices_size)
         {
-        case sizeof(uint8):
+        case sizeof(uint8_t):
         {
-            std::vector<uint8> temp;
-            temp.resize(indices_accessor.count);
-            memcpy(temp.data(), indices_buffer.data.data() + indices_buffer_view.byteOffset, indices_buffer_view.byteLength);
+            std::vector<uint8_t> temp(indices_accessor.count);
+            memcpy(
+                temp.data(), indices_buffer.data.data() + indices_buffer_view.byteOffset + indices_accessor.byteOffset,
+                indices_accessor.count * indices_size
+            );
             for (size_t i = 0; i < indices_accessor.count; ++i)
             {
-                indices[i] = int32(temp[i]);
+                indices[i] = int32_t(temp[i]);
             }
         }
         break;
-        case sizeof(uint16):
+        case sizeof(uint16_t):
         {
-            std::vector<uint16> temp;
-            temp.resize(indices_accessor.count);
-            memcpy(temp.data(), indices_buffer.data.data() + indices_buffer_view.byteOffset, indices_buffer_view.byteLength);
+            std::vector<uint16_t> temp(indices_accessor.count);
+            memcpy(
+                temp.data(), indices_buffer.data.data() + indices_buffer_view.byteOffset + indices_accessor.byteOffset,
+                indices_accessor.count * indices_size
+            );
             for (size_t i = 0; i < indices_accessor.count; ++i)
             {
-                indices[i] = int32(temp[i]);
+                indices[i] = int32_t(temp[i]);
             }
         }
         break;
-        case sizeof(uint32):
+        case sizeof(uint32_t):
         {
-            std::vector<uint32> temp;
-            temp.resize(indices_accessor.count);
-            memcpy(temp.data(), indices_buffer.data.data() + indices_buffer_view.byteOffset, indices_buffer_view.byteLength);
+            std::vector<uint32_t> temp(indices_accessor.count);
+            memcpy(
+                temp.data(), indices_buffer.data.data() + indices_buffer_view.byteOffset + indices_accessor.byteOffset,
+                indices_accessor.count * indices_size
+            );
             for (size_t i = 0; i < indices_accessor.count; ++i)
             {
-                indices[i] = int32(temp[i]);
+                indices[i] = int32_t(temp[i]);
             }
         }
         break;
@@ -133,7 +173,7 @@ static bool LoadMesh(Scene& scene, tinygltf::Model& model, tinygltf::Mesh& mesh,
 static void ProcessNode(Scene& my_scene, tinygltf::Model& model, tinygltf::Node& node, Mat4 parent)
 {
     Mat4 transform =
-        node.matrix.size() == 0
+        node.matrix.empty()
             ? identity
             : Mat4(
                   Vec4(float(node.matrix[0]), float(node.matrix[1]), float(node.matrix[2]), float(node.matrix[3])),
@@ -169,6 +209,7 @@ static void LoadScene(Scene& my_scene, tinygltf::Model& model, const Transform& 
 
 void LoadGLTF(Scene& scene, std::filesystem::path filename, const Transform& transform)
 {
+    std::cout << "Loading.. " << filename.string() << std::endl;
     tinygltf::TinyGLTF gltf;
     tinygltf::Model model;
 
@@ -185,7 +226,7 @@ void LoadGLTF(Scene& scene, std::filesystem::path filename, const Transform& tra
     }
     else
     {
-        std::cout << "Faild to load model: " << filename.string() << std::endl;
+        std::cout << "Failed to load model: " << filename.string() << std::endl;
         return;
     }
 

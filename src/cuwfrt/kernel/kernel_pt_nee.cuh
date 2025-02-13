@@ -22,6 +22,11 @@ inline __GPU__ Vec3 SampleDirectLight(
 )
 {
     int32 light_index = std::min(int32(u0 * scene->light_count), scene->light_count - 1);
+    if (light_index < 0)
+    {
+        return Vec3(0);
+    }
+
     PrimitiveIndex light = scene->light_indices[light_index];
     Material* light_mat = GetMaterial(scene, light);
     Float light_sample_pmf = 1.0f / scene->light_count;
