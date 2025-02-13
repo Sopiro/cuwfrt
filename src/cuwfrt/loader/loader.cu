@@ -1,15 +1,40 @@
 #include "loader.cuh"
 
+#define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_IMPLEMENTATION
 #include "tiny_gltf.h"
 
 namespace cuwfrt
 {
+
+std::string folder;
 static MaterialIndex fallback_material = { Material::TypeIndexOf<DiffuseMaterial>(), 0 };
+std::unordered_map<int32, MaterialIndex> materials;
 
 void SetFallbackMaterial(MaterialIndex material_index)
 {
     fallback_material = material_index;
+}
+
+static void LoadMaterials(Scene& scene, tinygltf::Model& model)
+{
+    for (int32 i = 0; i < int32(model.materials.size()); i++)
+    {
+        tinygltf::Material& gltf_material = model.materials[i];
+        tinygltf::PbrMetallicRoughness& pbr = gltf_material.pbrMetallicRoughness;
+
+        tinygltf::Texture& basecolor_texture = model.textures[pbr.baseColorTexture.index];
+        if (basecolor_texture.source > -1)
+        {
+            tinygltf::Image& image = model.images[basecolor_texture.source];
+            TextureIndex ti = scene.AddTexture(TextureDesc{ .filename = folder + image.uri, .non_color = false });
+            materials[i] = scene.AddMaterial<DiffuseMaterial>(ti);
+        }
+        else
+        {
+            materials[i] = fallback_material;
+        }
+    }
 }
 
 static bool LoadMesh(Scene& scene, tinygltf::Model& model, tinygltf::Mesh& mesh, const Mat4& transform)
@@ -164,7 +189,7 @@ static bool LoadMesh(Scene& scene, tinygltf::Model& model, tinygltf::Mesh& mesh,
         }
 
         TriangleMesh tri_mesh(positions, normals, tangents, texcoords, indices, transform);
-        scene.AddTriangleMesh(tri_mesh, fallback_material);
+        scene.AddTriangleMesh(tri_mesh, materials[primitive.material]);
     }
 
     return true;
@@ -210,7 +235,20 @@ static void LoadScene(Scene& my_scene, tinygltf::Model& model, const Transform& 
 void LoadGLTF(Scene& scene, std::filesystem::path filename, const Transform& transform)
 {
     std::cout << "Loading.. " << filename.string() << std::endl;
+
     tinygltf::TinyGLTF gltf;
+    gltf.SetImageLoader(
+        [](tinygltf::Image* image, const int, std::string*, const std::string*, int, int, const unsigned char*, int,
+           void*) -> bool {
+            image->image.clear();
+            image->width = 0;
+            image->height = 0;
+            image->component = 0;
+            image->bits = 0;
+            return true;
+        },
+        nullptr
+    );
     tinygltf::Model model;
 
     std::string err, warn;
@@ -237,6 +275,8 @@ void LoadGLTF(Scene& scene, std::filesystem::path filename, const Transform& tra
         return;
     }
 
+    folder = filename.remove_filename().string();
+    LoadMaterials(scene, model);
     LoadScene(scene, model, transform);
 }
 
