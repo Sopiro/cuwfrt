@@ -7,9 +7,9 @@
 namespace cuwfrt
 {
 
-std::string folder;
+static std::string folder;
 static MaterialIndex fallback_material = { Material::TypeIndexOf<DiffuseMaterial>(), 0 };
-std::unordered_map<int32, MaterialIndex> materials;
+static std::vector<MaterialIndex> materials;
 
 void SetFallbackMaterial(MaterialIndex material_index)
 {
@@ -28,11 +28,11 @@ static void LoadMaterials(Scene& scene, tinygltf::Model& model)
         {
             tinygltf::Image& image = model.images[basecolor_texture.source];
             TextureIndex ti = scene.AddTexture(TextureDesc{ .filename = folder + image.uri, .non_color = false });
-            materials[i] = scene.AddMaterial<DiffuseMaterial>(ti);
+            materials.push_back(scene.AddMaterial<DiffuseMaterial>(ti));
         }
         else
         {
-            materials[i] = fallback_material;
+            materials.push_back(fallback_material);
         }
     }
 }
