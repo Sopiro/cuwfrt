@@ -1,20 +1,20 @@
 #pragma once
 
 #include "common.h"
+#include "cuwfrt/geometry/intersection.h"
 
 namespace cuwfrt
 {
 
 struct WavefrontRay
 {
-    Vec3 origin;
-    Vec3 direction;
+    RNG rng;
+
+    Ray ray;
+    Intersection isect;
 
     Vec3 beta;
     int32 bounce;
-
-    Float hit_t;
-    int32 hit_idx;
 
     Float last_pdf;
     bool is_specular;
@@ -24,8 +24,7 @@ struct WavefrontRay
 
 struct WavefrontShadowRay
 {
-    Vec3 origin;
-    Vec3 direction;
+    Ray ray;
 
     Vec3 L;
     Float visibility;

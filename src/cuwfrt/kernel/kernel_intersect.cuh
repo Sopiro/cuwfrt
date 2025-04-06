@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cuwfrt/geometry/intersection.h"
 #include "kernel_primitive.cuh"
 
 namespace cuwfrt
@@ -11,7 +12,7 @@ inline __GPU__ Vec3 SkyColor(Vec3 d)
     return Lerp(Vec3(0.5, 0.7, 1.0), Vec3(1.0, 1.0, 1.0), a);
 }
 
-__GPU__ bool Intersect(Intersection* closest, const GPUScene* scene, Ray r, Float t_min, Float t_max)
+inline __GPU__ bool Intersect(Intersection* closest, const GPUScene* scene, Ray r, Float t_min, Float t_max)
 {
     bool hit_closest = false;
 
@@ -75,7 +76,7 @@ __GPU__ bool Intersect(Intersection* closest, const GPUScene* scene, Ray r, Floa
     return hit_closest;
 }
 
-__GPU__ bool IntersectAny(const GPUScene* scene, Ray r, Float t_min, Float t_max)
+inline __GPU__ bool IntersectAny(const GPUScene* scene, Ray r, Float t_min, Float t_max)
 {
     const Vec3 inv_dir(1 / r.d.x, 1 / r.d.y, 1 / r.d.z);
     const int32 is_dir_neg[3] = { int32(inv_dir.x < 0), int32(inv_dir.y < 0), int32(inv_dir.z < 0) };

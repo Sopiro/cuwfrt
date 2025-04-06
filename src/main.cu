@@ -32,10 +32,10 @@ static Float vfov = 71;
 static Float aperture = 0;
 static Float focus_dist = 1;
 
-static const int32 num_kernels = 5;
-static const char* name[num_kernels] = { "Gradient", "Normal", "AO", "Pathtrace Naive", "Pathtrace NEE" };
+static const int32 num_kernels = 6;
+static const char* name[num_kernels] = { "Gradient", "Normal", "AO", "Pathtrace Naive", "Pathtrace NEE", "Wavefront" };
 static Kernel* kernels[num_kernels] = { RenderGradient, RenderNormal, RaytraceAO, PathTraceNaive, PathTraceNEE };
-static int32 selection = 1;
+static int32 selection = 5;
 
 static Vec3 GetForward()
 {
@@ -104,7 +104,14 @@ static void Render()
     camera = Camera(player.position, GetForward(), y_axis, vfov, aperture, focus_dist, window->GetWindowSize());
     if (time < max_samples)
     {
-        raytracer->RayTrace(kernels[selection], time);
+        if (selection > 4)
+        {
+            raytracer->RayTraceWavefront(time);
+        }
+        else
+        {
+            raytracer->RayTrace(kernels[selection], time);
+        }
     }
 
     raytracer->DrawFrame();

@@ -4,6 +4,8 @@
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 
+#include "cuwfrt/kernel/kernel_wavefront.cuh"
+
 namespace cuwfrt
 {
 
@@ -134,6 +136,49 @@ void RayTracer::RayTrace(Kernel* kernel, int32 t)
 
         kernel<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_data.scene, *camera, *options, time);
 
+        cudaCheck(cudaGetLastError());
+        cudaCheck(cudaDeviceSynchronize());
+    }
+}
+
+void RayTracer::RayTraceWavefront(int32 t)
+{
+    time = t;
+
+    ResetCounts<<<1, 1>>>(d_next_ray_count, d_shadow_ray_count);
+    cudaCheck(cudaGetLastError());
+
+    int32 num_active_rays = ray_capacity;
+
+    // Generate Primary Rays
+    {
+        const dim3 threads(16, 16);
+        const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
+        GeneratePrimaryRays<<<blocks, threads>>>(d_rays_active, res, *camera, time);
+        cudaCheck(cudaGetLastError());
+    }
+
+    {
+        int32 threads = 128; // Typical size for traverse/shade
+        int32 blocks = (num_active_rays + threads - 1) / threads;
+
+        // Extend rays
+        Extend<<<blocks, threads>>>(d_rays_active, num_active_rays, gpu_data.scene);
+        cudaCheck(cudaGetLastError());
+
+        // Shade surfaces
+        Shade<<<blocks, threads>>>(
+            d_rays_active, num_active_rays, d_rays_next, d_next_ray_count, d_shadow_rays, d_shadow_ray_count, d_sample_buffer,
+            gpu_data.scene, *options, time
+        );
+        cudaCheck(cudaGetLastError());
+    }
+
+    // Finalize samples
+    {
+        const dim3 threads(16, 16);
+        const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
+        Finalize<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res);
         cudaCheck(cudaGetLastError());
         cudaCheck(cudaDeviceSynchronize());
     }

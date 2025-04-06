@@ -1,15 +1,7 @@
 #pragma once
 
-#include "cuwfrt/common.h"
-#include "cuwfrt/cuda_api.h"
-
-#include "cuwfrt/cuda_api.h"
-#include "cuwfrt/shading/frame.h"
-#include "cuwfrt/shading/sampling.h"
-
-#include "cuwfrt/camera/camera.h"
-#include "cuwfrt/scene/gpu_scene.cuh"
-
+#include "cuwfrt/raytracer.cuh"
+#include "device_launch_parameters.h"
 #include "kernel_intersect.cuh"
 #include "kernel_material.cuh"
 

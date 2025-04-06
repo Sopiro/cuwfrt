@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cuwfrt/common.h"
+#include "cuwfrt/geometry/intersection.h"
 #include "cuwfrt/scene/gpu_scene.cuh"
 
 namespace cuwfrt

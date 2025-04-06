@@ -32,6 +32,7 @@ public:
     ~RayTracer();
 
     void RayTrace(Kernel* kernel, int32 time);
+    void RayTraceWavefront(int32 time);
     void DrawFrame();
 
 private:
