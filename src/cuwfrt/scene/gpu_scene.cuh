@@ -28,11 +28,11 @@ struct GPUScene
 
     // Area lights
     PrimitiveIndex* light_indices = nullptr;
-    int32 light_count;
+    int32 light_count = 0;
 
     // BVH
-    PrimitiveIndex* bvh_primitives;
-    LinearBVHNode* bvh_nodes;
+    PrimitiveIndex* bvh_primitives = nullptr;
+    LinearBVHNode* bvh_nodes = nullptr;
 };
 
 struct GPUData

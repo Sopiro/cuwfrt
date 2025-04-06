@@ -7,11 +7,17 @@
 namespace cuwfrt
 {
 
-RayTracer::RayTracer(Window* window, Scene* scene, Camera* camera, Options* options)
+RayTracer::RayTracer(Window* window, const Scene* scene, const Camera* camera, const Options* options)
     : window{ window }
     , scene{ scene }
     , camera{ camera }
     , options{ options }
+    , d_rays_active{ nullptr }
+    , d_rays_next{ nullptr }
+    , d_shadow_rays{ nullptr }
+    , d_active_ray_count{ nullptr }
+    , d_next_ray_count{ nullptr }
+    , d_shadow_ray_count{ nullptr }
 {
     res = window->GetWindowSize();
     ray_capacity = res.x * res.y;

@@ -28,7 +28,7 @@ using Kernel = void(Vec4*, Vec4*, Point2i, GPUScene, Camera, Options, int32);
 class RayTracer
 {
 public:
-    RayTracer(Window* window, Scene* scene, Camera* camera, Options* options);
+    RayTracer(Window* window, const Scene* scene, const Camera* camera, const Options* options);
     ~RayTracer();
 
     void RayTrace(Kernel* kernel, int32 time);
@@ -54,19 +54,19 @@ private:
 
     // Wavefront resources
     int32 ray_capacity;
-    WavefrontRay* d_rays_active = nullptr;
-    WavefrontRay* d_rays_next = nullptr;
-    WavefrontShadowRay* d_shadow_rays = nullptr;
+    WavefrontRay* d_rays_active;
+    WavefrontRay* d_rays_next;
+    WavefrontShadowRay* d_shadow_rays;
 
-    int32* d_active_ray_count = nullptr;
-    int32* d_next_ray_count = nullptr;
-    int32* d_shadow_ray_count = nullptr;
+    int32* d_active_ray_count;
+    int32* d_next_ray_count;
+    int32* d_shadow_ray_count;
 
     QuadRenderer qr;
 
-    Scene* scene;
-    Camera* camera;
-    Options* options;
+    const Scene* scene;
+    const Camera* camera;
+    const Options* options;
 
     GPUData gpu_data;
 
