@@ -14,10 +14,19 @@ RayTracer::RayTracer(Window* window, Scene* scene, Camera* camera, Options* opti
     , options{ options }
 {
     res = window->GetWindowSize();
+    ray_capacity = res.x * res.y;
 
     window->SetFramebufferSizeChangeCallback([&](int32 width, int32 height) -> void {
-        glViewport(0, 0, width, height);
+        if (width <= 0 || height <= 0 || (res.x == width && res.y == height))
+        {
+            return;
+        }
+
         res.Set(width, height);
+        ray_capacity = width * height;
+        glViewport(0, 0, width, height);
+
+        cudaCheck(cudaDeviceSynchronize());
 
         // Recreate framebuffer
         DeleteFrameBuffer();
@@ -80,12 +89,31 @@ void RayTracer::InitGPUResources()
 {
     std::cout << "Init GPU resources" << std::endl;
     gpu_data.Init(scene);
+
+    size_t ray_buffer_size = sizeof(WavefrontRay) * ray_capacity;
+    size_t shadow_ray_buffer_size = sizeof(WavefrontShadowRay) * ray_capacity;
+
+    cudaCheck(cudaMalloc(&d_rays_active, ray_buffer_size));
+    cudaCheck(cudaMalloc(&d_rays_next, ray_buffer_size));
+    cudaCheck(cudaMalloc(&d_shadow_rays, shadow_ray_buffer_size));
+
+    cudaCheck(cudaMalloc(&d_active_ray_count, sizeof(int32)));
+    cudaCheck(cudaMalloc(&d_next_ray_count, sizeof(int32)));
+    cudaCheck(cudaMalloc(&d_shadow_ray_count, sizeof(int32)));
 }
 
 void RayTracer::FreeGPUResources()
 {
     std::cout << "Free GPU resources" << std::endl;
     gpu_data.Free();
+
+    cudaCheck(cudaFree(d_rays_active));
+    cudaCheck(cudaFree(d_rays_next));
+    cudaCheck(cudaFree(d_shadow_rays));
+
+    cudaCheck(cudaFree(d_active_ray_count));
+    cudaCheck(cudaFree(d_next_ray_count));
+    cudaCheck(cudaFree(d_shadow_ray_count));
 }
 
 void RayTracer::RayTrace(Kernel* kernel, int32 t)

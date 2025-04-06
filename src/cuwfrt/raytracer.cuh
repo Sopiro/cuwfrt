@@ -5,6 +5,8 @@
 #include "scene/gpu_scene.cuh"
 #include "scene/scene.cuh"
 
+#include "wavefront.h"
+
 #include "camera/camera.h"
 #include "quad_renderer.h"
 
@@ -49,6 +51,16 @@ private:
     cudaGraphicsResource* cuda_pbo;
     Vec4* d_sample_buffer;
     Vec4* d_frame_buffer;
+
+    // Wavefront resources
+    int32 ray_capacity;
+    WavefrontRay* d_rays_active = nullptr;
+    WavefrontRay* d_rays_next = nullptr;
+    WavefrontShadowRay* d_shadow_rays = nullptr;
+
+    int32* d_active_ray_count = nullptr;
+    int32* d_next_ray_count = nullptr;
+    int32* d_shadow_ray_count = nullptr;
 
     QuadRenderer qr;
 
