@@ -127,6 +127,7 @@ void RayTracer::RayTraceWavefront(int32 t)
 
     int32 num_active_rays = wf.ray_capacity;
     int32 num_next_rays = 0;
+    int32 num_miss_rays = 0;
     int32 num_shadow_rays = 0;
 
     // Generate Primary Rays
@@ -140,26 +141,57 @@ void RayTracer::RayTraceWavefront(int32 t)
     int32 bounce = 0;
     while (true)
     {
-        int32 threads = 128;
-        int32 blocks = (num_active_rays + threads - 1) / threads;
+        ResetCounts<<<1, 1>>>(wf.next_ray_count, wf.miss_ray_count, wf.shadow_ray_count);
+        cudaCheck(cudaGetLastError());
 
         // Extend rays
-        Extend<<<blocks, threads>>>(wf.rays_active, num_active_rays, gpu_res.scene);
+        {
+            int32 threads = 128;
+            int32 blocks = (num_active_rays + threads - 1) / threads;
+            Extend<<<blocks, threads>>>(
+                wf.rays_active, num_active_rays, wf.rays_next, wf.next_ray_count, wf.miss_rays, wf.miss_ray_count, gpu_res.scene
+            );
+            cudaCheck(cudaGetLastError());
+        }
+
+        // Get counts of newly generated rays (closest hit and miss)
+        cudaCheck(cudaMemcpy(&num_next_rays, wf.next_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+        cudaCheck(cudaMemcpy(&num_miss_rays, wf.miss_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+
+        std::swap(wf.rays_active, wf.rays_next);
+        num_active_rays = num_next_rays;
+
+        // Handle misses
+        if (num_miss_rays > 0)
+        {
+            int32 threads = 128;
+            int32 blocks = (num_miss_rays + threads - 1) / threads;
+            Miss<<<blocks, threads>>>(wf.miss_rays, num_miss_rays, d_sample_buffer, *options);
+            cudaCheck(cudaGetLastError());
+        }
+
+        if (num_active_rays <= 0)
+        {
+            break;
+        }
+
+        ResetCounts<<<1, 1>>>(wf.next_ray_count, wf.miss_ray_count, wf.shadow_ray_count);
         cudaCheck(cudaGetLastError());
 
-        ResetCounts<<<1, 1>>>(wf.next_ray_count, wf.shadow_ray_count);
-        cudaCheck(cudaGetLastError());
-
-        // Shade surfaces or handle misses
-        Shade<<<blocks, threads>>>(
-            wf.rays_active, num_active_rays, wf.rays_next, wf.next_ray_count, wf.shadow_rays, wf.shadow_ray_count,
-            d_sample_buffer, gpu_res.scene, *options, bounce, time
-        );
-        cudaCheck(cudaGetLastError());
+        // Shade surfaces
+        {
+            int32 threads = 128;
+            int32 blocks = (num_active_rays + threads - 1) / threads;
+            Shade<<<blocks, threads>>>(
+                wf.rays_active, num_active_rays, wf.rays_next, wf.next_ray_count, wf.shadow_rays, wf.shadow_ray_count,
+                d_sample_buffer, gpu_res.scene, *options, bounce, time
+            );
+            cudaCheck(cudaGetLastError());
+        }
 
         // Get counts of newly generated rays (next bounce and shadow)
-        cudaCheck(cudaMemcpyAsync(&num_next_rays, wf.next_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
-        cudaCheck(cudaMemcpyAsync(&num_shadow_rays, wf.shadow_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+        cudaCheck(cudaMemcpy(&num_next_rays, wf.next_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+        cudaCheck(cudaMemcpy(&num_shadow_rays, wf.shadow_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
 
         if (bounce++ >= options->max_bounces)
         {
