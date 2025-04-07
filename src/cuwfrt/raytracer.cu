@@ -145,19 +145,20 @@ void RayTracer::RayTraceWavefront(int32 t)
 {
     time = t;
 
-    ResetCounts<<<1, 1>>>(d_next_ray_count, d_shadow_ray_count);
-    cudaCheck(cudaGetLastError());
-
     int32 num_active_rays = ray_capacity;
+    int32 num_next_rays = 0;
+    int32 num_shadow_rays = 0;
 
     // Generate Primary Rays
     {
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        GeneratePrimaryRays<<<blocks, threads>>>(d_rays_active, res, *camera, time);
+        GeneratePrimaryRays<<<blocks, threads>>>(d_sample_buffer, d_rays_active, res, *camera, time);
         cudaCheck(cudaGetLastError());
     }
 
+    int32 bounce = 0;
+    while (true)
     {
         int32 threads = 128;
         int32 blocks = (num_active_rays + threads - 1) / threads;
@@ -166,19 +167,40 @@ void RayTracer::RayTraceWavefront(int32 t)
         Extend<<<blocks, threads>>>(d_rays_active, num_active_rays, gpu_data.scene);
         cudaCheck(cudaGetLastError());
 
-        // Shade surfaces
+        ResetCounts<<<1, 1>>>(d_next_ray_count, d_shadow_ray_count);
+        cudaCheck(cudaGetLastError());
+
+        // Shade surfaces or handle misses
         Shade<<<blocks, threads>>>(
             d_rays_active, num_active_rays, d_rays_next, d_next_ray_count, d_shadow_rays, d_shadow_ray_count, d_sample_buffer,
-            gpu_data.scene, *options, time
+            gpu_data.scene, *options, bounce, time
         );
         cudaCheck(cudaGetLastError());
+
+        // Get counts of newly generated rays (next bounce and shadow)
+        cudaCheck(cudaMemcpyAsync(&num_next_rays, d_next_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+        cudaCheck(cudaMemcpyAsync(&num_shadow_rays, d_shadow_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+
+        if (bounce++ >= options->max_bounces)
+        {
+            break;
+        }
+
+        // Prepare for next bounce
+        std::swap(d_rays_active, d_rays_next);
+        num_active_rays = num_next_rays;
+
+        if (num_active_rays <= 0)
+        {
+            break;
+        }
     }
 
     // Finalize samples
     {
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        Finalize<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res);
+        Finalize<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, time);
         cudaCheck(cudaGetLastError());
         cudaCheck(cudaDeviceSynchronize());
     }

@@ -19,7 +19,9 @@ __KERNEL__ void ResetCounts(int32* next_ray_count, int32* shadow_ray_count)
 }
 
 // Generate primary rays for each pixel
-__KERNEL__ void GeneratePrimaryRays(WavefrontRay* __restrict__ active_rays, Point2i res, Camera camera, int32 time)
+__KERNEL__ void GeneratePrimaryRays(
+    Vec4* __restrict__ sample_buffer, WavefrontRay* __restrict__ active_rays, Point2i res, Camera camera, int32 time
+)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -44,6 +46,8 @@ __KERNEL__ void GeneratePrimaryRays(WavefrontRay* __restrict__ active_rays, Poin
     wf_ray.is_specular = false;
 
     wf_ray.pixel_index = index;
+
+    sample_buffer[index] *= time;
 }
 
 // Trace rays and find closest intersection
@@ -71,6 +75,7 @@ __KERNEL__ void Shade(
     Vec4* __restrict__ sample_buffer,
     GPUScene scene,
     Options options,
+    int32 bounce,
     int32 time
 )
 {
@@ -80,16 +85,58 @@ __KERNEL__ void Shade(
     WavefrontRay& wf_ray = active_rays[index];
     int32 pixel_index = wf_ray.pixel_index;
 
-    if (wf_ray.isect.t > 0)
+    Ray& ray = wf_ray.ray;
+    Intersection& isect = wf_ray.isect;
+    Vec4& L = sample_buffer[pixel_index];
+    Vec3& beta = wf_ray.beta;
+    RNG& rng = wf_ray.rng;
+
+    bool found_intersection = wf_ray.isect.t > 0;
+    if (!found_intersection)
     {
-        sample_buffer[pixel_index] *= time;
-        sample_buffer[pixel_index] += Vec4((wf_ray.isect.normal + 1) * 0.5, 1);
-        sample_buffer[pixel_index] /= time + 1.0f;
+        if (options.render_sky)
+        {
+            L += Vec4(beta * SkyColor(ray.d), 1);
+        }
+        return;
     }
-    else
+
+    Vec3 wo = Normalize(-ray.d);
+
+    Material* m = GetMaterial(&scene, isect.prim);
+
+    if (Vec3 Le = m->Le(isect, wo); Le != Vec3(0))
     {
-        sample_buffer[pixel_index] = Vec4(0, 0, 0, 1);
+        L += Vec4(beta * Le, 1);
     }
+
+    Scattering ss;
+    Point2 u{ rng.NextFloat(), rng.NextFloat() };
+    if (!m->SampleBSDF(&ss, &scene, isect, wo, u))
+    {
+        return;
+    }
+
+    beta *= ss.s * AbsDot(isect.normal, ss.wi) / ss.pdf;
+
+    if (bounce > 1)
+    {
+        Float rr = fmin(1.0f, fmax(beta.x, fmax(beta.y, beta.z)));
+        if (rng.NextFloat() < rr)
+        {
+            beta /= rr;
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    ray.o = isect.point;
+    ray.d = ss.wi;
+
+    int32 new_index = atomicAdd(next_ray_count, 1);
+    next_rays[new_index] = wf_ray;
 }
 
 // Process shadow rays, add contribution if unoccluded
@@ -105,13 +152,15 @@ __KERNEL__ void Connect(
 }
 
 // Finalize frame: average samples and apply gamma correction
-__KERNEL__ void Finalize(const Vec4* __restrict__ sample_buffer, Vec4* __restrict__ frame_buffer, Point2i res)
+__KERNEL__ void Finalize(Vec4* __restrict__ sample_buffer, Vec4* __restrict__ frame_buffer, Point2i res, int32 time)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     if (x >= res.x || y >= res.y) return;
 
     int32 index = y * res.x + x;
+
+    sample_buffer[index] /= time + 1.0f;
 
     frame_buffer[index].x = std::pow(sample_buffer[index].x, 1 / 2.2f);
     frame_buffer[index].y = std::pow(sample_buffer[index].y, 1 / 2.2f);

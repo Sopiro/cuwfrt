@@ -134,7 +134,8 @@ static void BuildScene()
     static MaterialIndex white = scene.AddMaterial<DiffuseMaterial>(Vec3{ .73f, .73f, .73f });
     SetFallbackMaterial(white);
 
-    LoadGLTF(scene, "Z:/dev/cpp_workspace/Bulbit/res/sponza/glTF/Sponza.gltf", Transform(Vec3(0, 0, 0), identity, Vec3(0.01f)));
+    // LoadGLTF(scene, "Z:/dev/cpp_workspace/Bulbit/res/sponza/glTF/Sponza.gltf", Transform(Vec3(0, 0, 0), identity,
+    // Vec3(0.01f)));
 
     // LoadGLTF(scene, "C:/Users/sopir/Desktop/untitled.gltf", identity);
 }

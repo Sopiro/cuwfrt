@@ -19,7 +19,7 @@ class Scene;
 
 struct Options
 {
-    int32 max_bounces = 5;
+    int32 max_bounces = 3;
     bool render_sky = true;
 };
 
