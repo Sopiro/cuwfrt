@@ -14,30 +14,30 @@ class Scene;
 struct GPUScene
 {
     // Textures
-    cudaTextureObject_t* tex_objs = nullptr;
+    cudaTextureObject_t* tex_objs;
 
     // Materials
-    uint8* materials = nullptr;
-    int32* offsets = nullptr;
+    uint8* materials;
+    int32* offsets;
 
     // Scene primitives
-    Point3* positions = nullptr;
-    Vec3* normals = nullptr;
-    Vec3* tangents = nullptr;
-    Vec2* texcoords = nullptr;
-    Vec3i* indices = nullptr;
-    MaterialIndex* material_indices = nullptr;
+    Point3* positions;
+    Vec3* normals;
+    Vec3* tangents;
+    Vec2* texcoords;
+    Vec3i* indices;
+    MaterialIndex* material_indices;
 
     // Area lights
-    PrimitiveIndex* light_indices = nullptr;
-    int32 light_count = 0;
+    PrimitiveIndex* light_indices;
+    int32 light_count;
 
     // BVH
-    PrimitiveIndex* bvh_primitives = nullptr;
-    LinearBVHNode* bvh_nodes = nullptr;
+    PrimitiveIndex* bvh_primitives;
+    LinearBVHNode* bvh_nodes;
 };
 
-struct GPUData
+struct GPUResources
 {
     GPUScene scene;
     std::vector<Texture> textures;

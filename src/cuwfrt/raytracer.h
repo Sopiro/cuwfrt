@@ -55,23 +55,14 @@ private:
     Vec4* d_sample_buffer;
     Vec4* d_frame_buffer;
 
-    // Wavefront resources
-    int32 ray_capacity;
-    WavefrontRay* d_rays_active;
-    WavefrontRay* d_rays_next;
-    WavefrontShadowRay* d_shadow_rays;
-
-    int32* d_active_ray_count;
-    int32* d_next_ray_count;
-    int32* d_shadow_ray_count;
-
     QuadRenderer qr;
 
     const Scene* scene;
     const Camera* camera;
     const Options* options;
 
-    GPUData gpu_data;
+    GPUResources gpu_res;
+    WavefrontResources wf;
 
     int32 time;
 };

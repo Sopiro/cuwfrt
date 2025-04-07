@@ -8,7 +8,7 @@
 namespace cuwfrt
 {
 
-void GPUData::Init(const Scene* cpu_scene)
+void GPUResources::Init(const Scene* cpu_scene)
 {
     // Build BVH asynchronously
     std::unique_ptr<BVH> bvh;
@@ -102,7 +102,7 @@ void GPUData::Init(const Scene* cpu_scene)
     cudaCheck(cudaDeviceSynchronize());
 }
 
-void GPUData::Free()
+void GPUResources::Free()
 {
     cudaCheck(cudaFree(scene.materials));
     cudaCheck(cudaFree(scene.offsets));

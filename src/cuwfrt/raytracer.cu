@@ -14,15 +14,8 @@ RayTracer::RayTracer(Window* window, const Scene* scene, const Camera* camera, c
     , scene{ scene }
     , camera{ camera }
     , options{ options }
-    , d_rays_active{ nullptr }
-    , d_rays_next{ nullptr }
-    , d_shadow_rays{ nullptr }
-    , d_active_ray_count{ nullptr }
-    , d_next_ray_count{ nullptr }
-    , d_shadow_ray_count{ nullptr }
 {
     res = window->GetWindowSize();
-    ray_capacity = res.x * res.y;
 
     window->SetFramebufferSizeChangeCallback([&](int32 width, int32 height) -> void { Resize(width, height); });
 
@@ -81,32 +74,15 @@ void RayTracer::DeleteFrameBuffer()
 void RayTracer::InitGPUResources()
 {
     std::cout << "Init GPU resources" << std::endl;
-    gpu_data.Init(scene);
-
-    size_t ray_buffer_size = sizeof(WavefrontRay) * ray_capacity;
-    size_t shadow_ray_buffer_size = sizeof(WavefrontShadowRay) * ray_capacity;
-
-    cudaCheck(cudaMalloc(&d_rays_active, ray_buffer_size));
-    cudaCheck(cudaMalloc(&d_rays_next, ray_buffer_size));
-    cudaCheck(cudaMalloc(&d_shadow_rays, shadow_ray_buffer_size));
-
-    cudaCheck(cudaMalloc(&d_active_ray_count, sizeof(int32)));
-    cudaCheck(cudaMalloc(&d_next_ray_count, sizeof(int32)));
-    cudaCheck(cudaMalloc(&d_shadow_ray_count, sizeof(int32)));
+    gpu_res.Init(scene);
+    wf.Init(res);
 }
 
 void RayTracer::FreeGPUResources()
 {
     std::cout << "Free GPU resources" << std::endl;
-    gpu_data.Free();
-
-    cudaCheck(cudaFree(d_rays_active));
-    cudaCheck(cudaFree(d_rays_next));
-    cudaCheck(cudaFree(d_shadow_rays));
-
-    cudaCheck(cudaFree(d_active_ray_count));
-    cudaCheck(cudaFree(d_next_ray_count));
-    cudaCheck(cudaFree(d_shadow_ray_count));
+    gpu_res.Free();
+    wf.Free();
 }
 
 void RayTracer::Resize(int32 width, int32 height)
@@ -117,7 +93,6 @@ void RayTracer::Resize(int32 width, int32 height)
     }
 
     res.Set(width, height);
-    ray_capacity = width * height;
     glViewport(0, 0, width, height);
 
     cudaCheck(cudaDeviceSynchronize());
@@ -126,16 +101,7 @@ void RayTracer::Resize(int32 width, int32 height)
     DeleteFrameBuffer();
     CreateFrameBuffer();
 
-    cudaCheck(cudaFree(d_rays_active));
-    cudaCheck(cudaFree(d_rays_next));
-    cudaCheck(cudaFree(d_shadow_rays));
-
-    size_t ray_buffer_size = sizeof(WavefrontRay) * ray_capacity;
-    size_t shadow_ray_buffer_size = sizeof(WavefrontShadowRay) * ray_capacity;
-
-    cudaCheck(cudaMalloc(&d_rays_active, ray_buffer_size));
-    cudaCheck(cudaMalloc(&d_rays_next, ray_buffer_size));
-    cudaCheck(cudaMalloc(&d_shadow_rays, shadow_ray_buffer_size));
+    wf.Resize(res);
 }
 
 void RayTracer::RayTrace(Kernel* kernel, int32 t)
@@ -148,7 +114,7 @@ void RayTracer::RayTrace(Kernel* kernel, int32 t)
         const dim3 threads(8, 8);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-        kernel<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_data.scene, *camera, *options, time);
+        kernel<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_res.scene, *camera, *options, time);
 
         cudaCheck(cudaGetLastError());
         cudaCheck(cudaDeviceSynchronize());
@@ -159,7 +125,7 @@ void RayTracer::RayTraceWavefront(int32 t)
 {
     time = t;
 
-    int32 num_active_rays = ray_capacity;
+    int32 num_active_rays = wf.ray_capacity;
     int32 num_next_rays = 0;
     int32 num_shadow_rays = 0;
 
@@ -167,7 +133,7 @@ void RayTracer::RayTraceWavefront(int32 t)
     {
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        GeneratePrimaryRays<<<blocks, threads>>>(d_sample_buffer, d_rays_active, res, *camera, time);
+        GeneratePrimaryRays<<<blocks, threads>>>(d_sample_buffer, wf.rays_active, res, *camera, time);
         cudaCheck(cudaGetLastError());
     }
 
@@ -178,22 +144,22 @@ void RayTracer::RayTraceWavefront(int32 t)
         int32 blocks = (num_active_rays + threads - 1) / threads;
 
         // Extend rays
-        Extend<<<blocks, threads>>>(d_rays_active, num_active_rays, gpu_data.scene);
+        Extend<<<blocks, threads>>>(wf.rays_active, num_active_rays, gpu_res.scene);
         cudaCheck(cudaGetLastError());
 
-        ResetCounts<<<1, 1>>>(d_next_ray_count, d_shadow_ray_count);
+        ResetCounts<<<1, 1>>>(wf.next_ray_count, wf.shadow_ray_count);
         cudaCheck(cudaGetLastError());
 
         // Shade surfaces or handle misses
         Shade<<<blocks, threads>>>(
-            d_rays_active, num_active_rays, d_rays_next, d_next_ray_count, d_shadow_rays, d_shadow_ray_count, d_sample_buffer,
-            gpu_data.scene, *options, bounce, time
+            wf.rays_active, num_active_rays, wf.rays_next, wf.next_ray_count, wf.shadow_rays, wf.shadow_ray_count,
+            d_sample_buffer, gpu_res.scene, *options, bounce, time
         );
         cudaCheck(cudaGetLastError());
 
         // Get counts of newly generated rays (next bounce and shadow)
-        cudaCheck(cudaMemcpyAsync(&num_next_rays, d_next_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
-        cudaCheck(cudaMemcpyAsync(&num_shadow_rays, d_shadow_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+        cudaCheck(cudaMemcpyAsync(&num_next_rays, wf.next_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+        cudaCheck(cudaMemcpyAsync(&num_shadow_rays, wf.shadow_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
 
         if (bounce++ >= options->max_bounces)
         {
@@ -201,7 +167,7 @@ void RayTracer::RayTraceWavefront(int32 t)
         }
 
         // Prepare for next bounce
-        std::swap(d_rays_active, d_rays_next);
+        std::swap(wf.rays_active, wf.rays_next);
         num_active_rays = num_next_rays;
 
         if (num_active_rays <= 0)
