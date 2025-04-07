@@ -1,5 +1,9 @@
 #include "loader.cuh"
 
+#define TINYOBJLOADER_IMPLEMENTATION
+// #define TINYOBJLOADER_USE_MAPBOX_EARCUT
+#include "tiny_obj_loader.h"
+
 #define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_IMPLEMENTATION
 #include "tiny_gltf.h"
@@ -9,13 +13,14 @@
 namespace cuwfrt
 {
 
-static std::string folder;
-static MaterialIndex fallback_material = { Material::TypeIndexOf<DiffuseMaterial>(), 0 };
-static std::vector<MaterialIndex> materials;
+static std::string g_folder;
+static bool g_force_fallback_material = false;
+static MaterialIndex g_fallback_material = { Material::TypeIndexOf<DiffuseMaterial>(), 0 };
+static std::vector<MaterialIndex> g_materials;
 
 void SetFallbackMaterial(MaterialIndex material_index)
 {
-    fallback_material = material_index;
+    g_fallback_material = material_index;
 }
 
 static void LoadMaterials(Scene& scene, tinygltf::Model& model)
@@ -29,12 +34,12 @@ static void LoadMaterials(Scene& scene, tinygltf::Model& model)
         if (basecolor_texture.source > -1)
         {
             tinygltf::Image& image = model.images[basecolor_texture.source];
-            TextureIndex ti = scene.AddTexture(TextureDesc{ .filename = folder + image.uri, .non_color = false });
-            materials.push_back(scene.AddMaterial<DiffuseMaterial>(ti));
+            TextureIndex ti = scene.AddTexture(TextureDesc{ .filename = g_folder + image.uri, .non_color = false });
+            g_materials.push_back(scene.AddMaterial<DiffuseMaterial>(ti));
         }
         else
         {
-            materials.push_back(fallback_material);
+            g_materials.push_back(g_fallback_material);
         }
     }
 }
@@ -191,7 +196,7 @@ static bool LoadMesh(Scene& scene, tinygltf::Model& model, tinygltf::Mesh& mesh,
         }
 
         TriangleMesh tri_mesh(positions, normals, tangents, texcoords, indices, transform);
-        scene.AddTriangleMesh(tri_mesh, materials[primitive.material]);
+        scene.AddTriangleMesh(tri_mesh, g_materials[primitive.material]);
     }
 
     return true;
@@ -277,9 +282,186 @@ void LoadGLTF(Scene& scene, std::filesystem::path filename, const Transform& tra
         return;
     }
 
-    folder = filename.remove_filename().string();
+    g_folder = filename.remove_filename().string();
     LoadMaterials(scene, model);
     LoadScene(scene, model, transform);
+}
+
+static MaterialIndex CreateOBJMaterial(Scene& scene, const tinyobj::material_t& mat, const std::string& root)
+{
+    // Vec3 basecolor_factor = { Float(mat.diffuse[0]), Float(mat.diffuse[1]), Float(mat.diffuse[2]) };
+    // Float metallic_factor = 0;
+    // Float roughness_factor = 1;
+    // Vec3 emission_factor = { Float(mat.emission[0]), Float(mat.emission[1]), Float(mat.emission[2]) };
+
+    TextureIndex ti = scene.AddTexture(TextureDesc{ .filename = root + mat.diffuse_texname, .non_color = false });
+    return scene.AddMaterial<DiffuseMaterial>(ti);
+}
+
+// Structure to accumulate mesh data grouped by material.
+struct OBJMeshGroup
+{
+    std::vector<Vec3> positions;
+    std::vector<Vec3> normals;
+    std::vector<Vec3> tangents;
+    std::vector<Vec2> texcoords;
+    std::vector<int32> indices;
+};
+
+// Load OBJ model using tinyobj library.
+void LoadOBJ(Scene& scene, std::filesystem::path filename, const Transform& transform)
+{
+    std::cout << "Loading OBJ: " << filename.string() << std::endl;
+
+    // Extract g_folder path for textures and MTL file loading.
+    g_folder = filename.parent_path().string();
+    if (!g_folder.empty() && g_folder.back() != '/')
+    {
+        g_folder += "/";
+    }
+
+    tinyobj::ObjReaderConfig reader_config;
+    reader_config.mtl_search_path = g_folder; // MTL file is assumed to be in the same g_folder as the OBJ.
+
+    tinyobj::ObjReader reader;
+    if (!reader.ParseFromFile(filename.string(), reader_config))
+    {
+        if (!reader.Error().empty())
+        {
+            std::cerr << "TinyObjReader Error: " << reader.Error() << std::endl;
+        }
+        return;
+    }
+    if (!reader.Warning().empty())
+    {
+        std::cout << "TinyObjReader Warning: " << reader.Warning() << std::endl;
+    }
+
+    const auto& attrib = reader.GetAttrib();
+    const auto& shapes = reader.GetShapes();
+    const auto& materials = reader.GetMaterials();
+
+    // Convert OBJ materials to engine Materials. The index corresponds to the material ID.
+    std::vector<MaterialIndex> obj_materials(materials.size());
+    for (size_t i = 0; i < materials.size(); i++)
+    {
+        obj_materials[i] = !g_force_fallback_material ? CreateOBJMaterial(scene, materials[i], g_folder) : g_fallback_material;
+    }
+
+    // Process each shape in the OBJ file.
+    for (const auto& shape : shapes)
+    {
+        size_t index_offset = 0;
+        // Group faces by material ID (a shape may mix different materials).
+        std::unordered_map<int, OBJMeshGroup> groups;
+        groups.reserve(4); // Reserve some typical material group count.
+
+        // Iterate over each face.
+        for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); ++f)
+        {
+            int material_id = shape.mesh.material_ids[f]; // Material ID for this face (-1 if none)
+            OBJMeshGroup& group = groups[material_id];
+            size_t fv = size_t(shape.mesh.num_face_vertices[f]);
+
+            std::vector<int> face_indices;
+            face_indices.reserve(fv); // Reserve space for vertex indices in the face
+
+            // Process each vertex of the face.
+            for (size_t v = 0; v < fv; v++)
+            {
+                const tinyobj::index_t& idx = shape.mesh.indices[index_offset + v];
+
+                // Retrieve vertex position.
+                Vec3 position;
+                position.x = attrib.vertices[3 * size_t(idx.vertex_index) + 0];
+                position.y = attrib.vertices[3 * size_t(idx.vertex_index) + 1];
+                position.z = attrib.vertices[3 * size_t(idx.vertex_index) + 2];
+
+                // Retrieve normal if available.
+                Vec3 normal(0);
+                if (idx.normal_index >= 0)
+                {
+                    normal.x = attrib.normals[3 * size_t(idx.normal_index) + 0];
+                    normal.y = attrib.normals[3 * size_t(idx.normal_index) + 1];
+                    normal.z = attrib.normals[3 * size_t(idx.normal_index) + 2];
+                }
+
+                // Retrieve texture coordinates if available.
+                Vec2 texcoord(0);
+                if (idx.texcoord_index >= 0)
+                {
+                    texcoord.x = attrib.texcoords[2 * size_t(idx.texcoord_index) + 0];
+                    texcoord.y = attrib.texcoords[2 * size_t(idx.texcoord_index) + 1];
+                }
+
+                // Calculate tangent from the normal (since OBJ usually doesn't provide tangents).
+                Vec3 tangent(0);
+                if (normal != Vec3::zero)
+                {
+                    Vec3 bitangent;
+                    CoordinateSystem(normal, &tangent, &bitangent);
+                }
+
+                group.positions.push_back(position);
+                group.normals.push_back(normal);
+                group.tangents.push_back(tangent);
+                group.texcoords.push_back(texcoord);
+                face_indices.push_back(int32(group.positions.size() - 1));
+            }
+
+            // Triangulate the face using a triangle fan approach if necessary.
+            if (fv >= 3)
+            {
+                if (fv == 3)
+                {
+                    group.indices.insert(group.indices.end(), face_indices.begin(), face_indices.end());
+                }
+                else
+                {
+                    for (size_t v = 1; v < fv - 1; v++)
+                    {
+                        group.indices.push_back(face_indices[0]);
+                        group.indices.push_back(face_indices[v]);
+                        group.indices.push_back(face_indices[v + 1]);
+                    }
+                }
+            }
+            index_offset += fv;
+        }
+
+        // Create a mesh for each material group and add it to the scene.
+        for (auto& [material_id, group] : groups)
+        {
+            TriangleMesh tri_mesh(
+                std::move(group.positions), std::move(group.normals), std::move(group.tangents), std::move(group.texcoords),
+                std::move(group.indices), transform
+            );
+
+            MaterialIndex material = (material_id < 0 || size_t(material_id) >= obj_materials.size())
+                                         ? g_fallback_material
+                                         : obj_materials[material_id];
+
+            scene.AddTriangleMesh(tri_mesh, material);
+        }
+    }
+}
+
+void LoadModel(Scene& scene, std::filesystem::path filename, const Transform& transform)
+{
+    auto ext = filename.extension();
+    if (ext == ".gltf" || ext == ".glb")
+    {
+        LoadGLTF(scene, filename, transform);
+    }
+    else if (filename.extension() == ".obj")
+    {
+        LoadOBJ(scene, filename, transform);
+    }
+    else
+    {
+        std::cout << "Failed to load model: " << filename.string() << std::endl;
+        std::cout << "Supported extensions: .obj .gltf" << std::endl;
+    }
 }
 
 } // namespace cuwfrt

@@ -24,22 +24,7 @@ RayTracer::RayTracer(Window* window, const Scene* scene, const Camera* camera, c
     res = window->GetWindowSize();
     ray_capacity = res.x * res.y;
 
-    window->SetFramebufferSizeChangeCallback([&](int32 width, int32 height) -> void {
-        if (width <= 0 || height <= 0 || (res.x == width && res.y == height))
-        {
-            return;
-        }
-
-        res.Set(width, height);
-        ray_capacity = width * height;
-        glViewport(0, 0, width, height);
-
-        cudaCheck(cudaDeviceSynchronize());
-
-        // Recreate framebuffer
-        DeleteFrameBuffer();
-        CreateFrameBuffer();
-    });
+    window->SetFramebufferSizeChangeCallback([&](int32 width, int32 height) -> void { Resize(width, height); });
 
     CreateFrameBuffer();
     InitGPUResources();
@@ -122,6 +107,35 @@ void RayTracer::FreeGPUResources()
     cudaCheck(cudaFree(d_active_ray_count));
     cudaCheck(cudaFree(d_next_ray_count));
     cudaCheck(cudaFree(d_shadow_ray_count));
+}
+
+void RayTracer::Resize(int32 width, int32 height)
+{
+    if (width <= 0 || height <= 0 || (res.x == width && res.y == height))
+    {
+        return;
+    }
+
+    res.Set(width, height);
+    ray_capacity = width * height;
+    glViewport(0, 0, width, height);
+
+    cudaCheck(cudaDeviceSynchronize());
+
+    // Recreate framebuffer
+    DeleteFrameBuffer();
+    CreateFrameBuffer();
+
+    cudaCheck(cudaFree(d_rays_active));
+    cudaCheck(cudaFree(d_rays_next));
+    cudaCheck(cudaFree(d_shadow_rays));
+
+    size_t ray_buffer_size = sizeof(WavefrontRay) * ray_capacity;
+    size_t shadow_ray_buffer_size = sizeof(WavefrontShadowRay) * ray_capacity;
+
+    cudaCheck(cudaMalloc(&d_rays_active, ray_buffer_size));
+    cudaCheck(cudaMalloc(&d_rays_next, ray_buffer_size));
+    cudaCheck(cudaMalloc(&d_shadow_rays, shadow_ray_buffer_size));
 }
 
 void RayTracer::RayTrace(Kernel* kernel, int32 t)

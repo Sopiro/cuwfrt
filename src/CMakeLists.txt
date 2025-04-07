@@ -10,6 +10,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(alzartak)
 
+# Include tinyobj
+FetchContent_Declare(
+    tinyobj
+    GIT_REPOSITORY "https://github.com/tinyobjloader/tinyobjloader.git"
+    GIT_TAG release
+)
+FetchContent_Populate(tinyobj)
+
 # Include tinygltf
 set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
 set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
@@ -28,7 +36,6 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${HEADER_FILES} ${SOURCE_F
 add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})
 
 # set(CMAKE_CUDA_ARCHITECTURES 70 75 80) # Volta, Turing, Ampere
-
 target_precompile_headers(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/cuwfrt/common.h
 )
@@ -44,7 +51,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE 
+    target_compile_options(${PROJECT_NAME} PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:/WX /W4 /wd4819>
     )
 
@@ -56,7 +63,7 @@ if(MSVC)
     )
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${tinygltf_SOURCE_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${tinyobj_SOURCE_DIR} ${tinygltf_SOURCE_DIR})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::cudart alzartak)
 

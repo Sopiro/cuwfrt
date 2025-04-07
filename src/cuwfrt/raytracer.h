@@ -45,6 +45,8 @@ private:
     void UpdateTexture();
     void RenderQuad();
 
+    void Resize(int32 width, int32 height);
+
     Window* window;
     Point2i res;
 

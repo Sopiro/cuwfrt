@@ -20,7 +20,7 @@ public:
     template <typename T, typename... Args>
     MaterialIndex AddMaterial(Args&&... args);
 
-    void AddTriangleMesh(const TriangleMesh& mat, MaterialIndex mi);
+    void AddTriangleMesh(const TriangleMesh& mesh, MaterialIndex mi);
 
     void Clear();
 
