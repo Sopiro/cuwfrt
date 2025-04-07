@@ -9,11 +9,12 @@
 namespace cuwfrt
 {
 
-__KERNEL__ void ResetCounts(int32* next_ray_count, int32* miss_ray_count, int32* shadow_ray_count)
+__KERNEL__ void ResetCounts(int32* next_ray_count, int32* closest_ray_count, int32* miss_ray_count, int32* shadow_ray_count)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0)
     {
         *next_ray_count = 0;
+        *closest_ray_count = 0;
         *miss_ray_count = 0;
         *shadow_ray_count = 0;
     }
@@ -54,8 +55,8 @@ __KERNEL__ void GeneratePrimaryRays(
 __KERNEL__ void Extend(
     WavefrontRay* __restrict__ active_rays,
     int32 active_ray_count,
-    WavefrontRay* __restrict__ next_rays,
-    int32* next_ray_count,
+    WavefrontRay* __restrict__ closest_rays,
+    int32* closest_ray_count,
     WavefrontMissRay* __restrict__ miss_rays,
     int32* miss_ray_count,
     GPUScene scene
@@ -69,8 +70,8 @@ __KERNEL__ void Extend(
     bool found_intersection = Intersect(&wf_ray.isect, &scene, wf_ray.ray, Ray::epsilon, infinity);
     if (found_intersection)
     {
-        int32 next_index = atomicAdd(next_ray_count, 1);
-        next_rays[next_index] = active_rays[index];
+        int32 next_index = atomicAdd(closest_ray_count, 1);
+        closest_rays[next_index] = active_rays[index];
     }
     else
     {
@@ -98,8 +99,8 @@ __KERNEL__ void Miss(
 
 // Shade hit points, generate next bounce rays and shadow rays
 __KERNEL__ void Shade(
-    WavefrontRay* __restrict__ active_rays,
-    int32 active_ray_count,
+    WavefrontRay* __restrict__ closest_rays,
+    int32 closest_ray_count,
     WavefrontRay* __restrict__ next_rays,
     int32* next_ray_count,
     WavefrontShadowRay* __restrict__ shadow_rays,
@@ -112,9 +113,9 @@ __KERNEL__ void Shade(
 )
 {
     int32 index = threadIdx.x + blockIdx.x * blockDim.x;
-    if (index >= active_ray_count) return;
+    if (index >= closest_ray_count) return;
 
-    WavefrontRay& wf_ray = active_rays[index];
+    WavefrontRay& wf_ray = closest_rays[index];
     int32 pixel_index = wf_ray.pixel_index;
 
     Ray& ray = wf_ray.ray;

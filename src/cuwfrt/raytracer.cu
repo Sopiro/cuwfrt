@@ -127,6 +127,7 @@ void RayTracer::RayTraceWavefront(int32 t)
 
     int32 num_active_rays = wf.ray_capacity;
     int32 num_next_rays = 0;
+    int32 num_closest_rays = 0;
     int32 num_miss_rays = 0;
     int32 num_shadow_rays = 0;
 
@@ -141,7 +142,7 @@ void RayTracer::RayTraceWavefront(int32 t)
     int32 bounce = 0;
     while (true)
     {
-        ResetCounts<<<1, 1>>>(wf.next_ray_count, wf.miss_ray_count, wf.shadow_ray_count);
+        ResetCounts<<<1, 1>>>(wf.next_ray_count, wf.closest_ray_count, wf.miss_ray_count, wf.shadow_ray_count);
         cudaCheck(cudaGetLastError());
 
         // Extend rays
@@ -149,17 +150,15 @@ void RayTracer::RayTraceWavefront(int32 t)
             int32 threads = 128;
             int32 blocks = (num_active_rays + threads - 1) / threads;
             Extend<<<blocks, threads>>>(
-                wf.rays_active, num_active_rays, wf.rays_next, wf.next_ray_count, wf.miss_rays, wf.miss_ray_count, gpu_res.scene
+                wf.rays_active, num_active_rays, wf.rays_closest, wf.closest_ray_count, wf.miss_rays, wf.miss_ray_count,
+                gpu_res.scene
             );
             cudaCheck(cudaGetLastError());
         }
 
         // Get counts of newly generated rays (closest hit and miss)
-        cudaCheck(cudaMemcpy(&num_next_rays, wf.next_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+        cudaCheck(cudaMemcpy(&num_closest_rays, wf.closest_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
         cudaCheck(cudaMemcpy(&num_miss_rays, wf.miss_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
-
-        std::swap(wf.rays_active, wf.rays_next);
-        num_active_rays = num_next_rays;
 
         // Handle misses
         if (num_miss_rays > 0)
@@ -170,20 +169,13 @@ void RayTracer::RayTraceWavefront(int32 t)
             cudaCheck(cudaGetLastError());
         }
 
-        if (num_active_rays <= 0)
-        {
-            break;
-        }
-
-        ResetCounts<<<1, 1>>>(wf.next_ray_count, wf.miss_ray_count, wf.shadow_ray_count);
-        cudaCheck(cudaGetLastError());
-
         // Shade surfaces
+        if (num_closest_rays > 0)
         {
             int32 threads = 128;
-            int32 blocks = (num_active_rays + threads - 1) / threads;
+            int32 blocks = (num_closest_rays + threads - 1) / threads;
             Shade<<<blocks, threads>>>(
-                wf.rays_active, num_active_rays, wf.rays_next, wf.next_ray_count, wf.shadow_rays, wf.shadow_ray_count,
+                wf.rays_closest, num_closest_rays, wf.rays_next, wf.next_ray_count, wf.shadow_rays, wf.shadow_ray_count,
                 d_sample_buffer, gpu_res.scene, *options, bounce, time
             );
             cudaCheck(cudaGetLastError());
