@@ -42,13 +42,16 @@ void WavefrontResources::Resize(Point2i res)
     ray_capacity = res.x * res.y;
     cudaCheck(cudaFree(rays_active));
     cudaCheck(cudaFree(rays_next));
+    cudaCheck(cudaFree(miss_rays));
     cudaCheck(cudaFree(shadow_rays));
 
     size_t ray_buffer_size = sizeof(WavefrontRay) * ray_capacity;
+    size_t miss_ray_buffer_size = sizeof(WavefrontMissRay) * ray_capacity;
     size_t shadow_ray_buffer_size = sizeof(WavefrontShadowRay) * ray_capacity;
 
     cudaCheck(cudaMalloc(&rays_active, ray_buffer_size));
     cudaCheck(cudaMalloc(&rays_next, ray_buffer_size));
+    cudaCheck(cudaMalloc(&miss_rays, miss_ray_buffer_size));
     cudaCheck(cudaMalloc(&shadow_rays, shadow_ray_buffer_size));
 }
 
