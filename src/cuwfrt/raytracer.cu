@@ -1,5 +1,5 @@
 #include "cuda_error.cuh"
-#include "raytracer.cuh"
+#include "raytracer.h"
 
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
@@ -159,7 +159,7 @@ void RayTracer::RayTraceWavefront(int32 t)
     }
 
     {
-        int32 threads = 128; // Typical size for traverse/shade
+        int32 threads = 128;
         int32 blocks = (num_active_rays + threads - 1) / threads;
 
         // Extend rays

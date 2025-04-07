@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cuda_runtime.h>
+
 #include "texture_desc.h"
 
 namespace cuwfrt

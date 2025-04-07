@@ -1,8 +1,10 @@
 #pragma once
 
-#include "cuwfrt/accel/bvh.cuh"
+#include <cuda_runtime.h>
+
+#include "cuwfrt/accel/bvh.h"
 #include "cuwfrt/material/material.h"
-#include "cuwfrt/texture/texture.cuh"
+#include "cuwfrt/texture/texture.h"
 
 namespace cuwfrt
 {

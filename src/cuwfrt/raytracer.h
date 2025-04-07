@@ -2,7 +2,7 @@
 
 #include "alzartak/window.h"
 
-#include "scene/gpu_scene.cuh"
+#include "scene/gpu_scene.h"
 #include "scene/scene.cuh"
 
 #include "wavefront.h"

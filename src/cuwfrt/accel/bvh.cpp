@@ -1,7 +1,6 @@
-#include "bvh.cuh"
+#include "bvh.h"
 
 #include "cuwfrt/geometry/intersection.h"
-#include "cuwfrt/scene/scene.cuh"
 #include "cuwfrt/util/parallel_for.h"
 
 #include <algorithm>
@@ -13,10 +12,9 @@ using Resource = std::pmr::monotonic_buffer_resource;
 using PoolResource = std::pmr::unsynchronized_pool_resource;
 using Allocator = std::pmr::polymorphic_allocator<std::byte>;
 
-BVH::BVH(const Scene* scene)
-    : scene{ scene }
+BVH::BVH(std::span<const AABB> aabbs)
 {
-    size_t primitive_count = scene->indices.size();
+    size_t primitive_count = aabbs.size();
 
     primitives.resize(primitive_count);
     for (size_t i = 0; i < primitive_count; ++i)
@@ -27,7 +25,7 @@ BVH::BVH(const Scene* scene)
     std::vector<BVHPrimitive> bvh_primitives(primitive_count);
     for (size_t i = 0; i < primitive_count; ++i)
     {
-        bvh_primitives[i] = BVHPrimitive(i, scene->aabbs[primitives[i]]);
+        bvh_primitives[i] = BVHPrimitive(i, aabbs[primitives[i]]);
     }
 
     std::vector<PrimitiveIndex> ordered_prims(primitive_count);

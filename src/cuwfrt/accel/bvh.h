@@ -29,7 +29,7 @@ struct alignas(32) LinearBVHNode
 class BVH
 {
 public:
-    BVH(const Scene* scene);
+    BVH(std::span<const AABB> aabbs);
     ~BVH();
 
 private:
@@ -68,8 +68,6 @@ private:
 
     template <typename T>
     void RayCast(const Ray& r, Float t_min, Float t_max, T* callback) const;
-
-    const Scene* scene;
 
 public:
     std::vector<PrimitiveIndex> primitives;

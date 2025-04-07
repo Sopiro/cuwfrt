@@ -1,7 +1,8 @@
 #pragma once
 
-#include "cuwfrt/raytracer.cuh"
-#include "device_launch_parameters.h"
+#include <device_launch_parameters.h>
+
+#include "cuwfrt/raytracer.h"
 #include "kernel_intersect.cuh"
 #include "kernel_material.cuh"
 

@@ -2,7 +2,7 @@
 
 #include "cuwfrt/common.h"
 #include "cuwfrt/geometry/intersection.h"
-#include "cuwfrt/scene/gpu_scene.cuh"
+#include "cuwfrt/scene/gpu_scene.h"
 
 namespace cuwfrt
 {

@@ -4,6 +4,8 @@
 #define TINYGLTF_IMPLEMENTATION
 #include "tiny_gltf.h"
 
+#include "cuwfrt/shading/frame.h"
+
 namespace cuwfrt
 {
 

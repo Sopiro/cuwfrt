@@ -2,7 +2,7 @@
 #include "cuwfrt/cuda_error.cuh"
 #include "cuwfrt/util/async_job.h"
 
-#include "gpu_scene.cuh"
+#include "gpu_scene.h"
 #include "scene.cuh"
 
 namespace cuwfrt
@@ -13,7 +13,7 @@ void GPUData::Init(const Scene* cpu_scene)
     // Build BVH asynchronously
     std::unique_ptr<BVH> bvh;
     auto j = RunAsync([cpu_scene, &bvh]() {
-        bvh = std::make_unique<BVH>(cpu_scene);
+        bvh = std::make_unique<BVH>(cpu_scene->aabbs);
         return true;
     });
 

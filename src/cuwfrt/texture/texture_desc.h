@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string>
+#include "cuwfrt/common.h"
 
 namespace cuwfrt
 {

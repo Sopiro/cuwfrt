@@ -1,7 +1,8 @@
 #pragma once
 
-#include "cuwfrt/geometry/intersection.h"
 #include "kernel_primitive.cuh"
+
+#include "cuwfrt/geometry/intersection.h"
 
 namespace cuwfrt
 {

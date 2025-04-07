@@ -1,9 +1,9 @@
 #pragma once
 
+#include "scene.cuh"
+
 #include "cuwfrt/geometry/primitive.h"
 #include "cuwfrt/geometry/triangle_mesh.h"
-
-#include "scene.cuh"
 
 namespace cuwfrt
 {

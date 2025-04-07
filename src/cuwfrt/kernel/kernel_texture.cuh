@@ -1,7 +1,8 @@
 #pragma once
 
-#include "cuwfrt/scene/gpu_scene.cuh"
+#include <cuda_runtime.h>
 
+#include "cuwfrt/scene/gpu_scene.h"
 #include "kernel_utils.cuh"
 
 namespace cuwfrt

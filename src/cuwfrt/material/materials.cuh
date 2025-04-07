@@ -1,13 +1,14 @@
 #pragma once
 
-#include "cuwfrt/geometry/intersection.h"
-#include "cuwfrt/kernel/kernel_primitive.cuh"
-#include "cuwfrt/kernel/kernel_texture.cuh"
 #include "cuwfrt/material/material.h"
+
+#include "cuwfrt/geometry/intersection.h"
 #include "cuwfrt/shading/frame.h"
 #include "cuwfrt/shading/sampling.h"
 #include "cuwfrt/shading/scattering.h"
-#include "cuwfrt/texture/texture.cuh"
+
+#include "cuwfrt/kernel/kernel_primitive.cuh"
+#include "cuwfrt/kernel/kernel_texture.cuh"
 
 #include <cuda_fp16.h>
 

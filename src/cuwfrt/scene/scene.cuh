@@ -1,7 +1,9 @@
 #pragma once
 
+#include "cuwfrt/material/materials.cuh"
+
+#include "cuwfrt/geometry/primitive.h"
 #include "cuwfrt/geometry/triangle_mesh.h"
-#include "cuwfrt/material/materials.h"
 #include "cuwfrt/texture/texture_desc.h"
 #include "cuwfrt/util/polymorphic_vector.h"
 

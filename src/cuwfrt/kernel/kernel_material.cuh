@@ -1,7 +1,7 @@
 #pragma once
 
-#include "cuwfrt/material/materials.h"
-#include "cuwfrt/scene/gpu_scene.cuh"
+#include "cuwfrt/material/materials.cuh"
+#include "cuwfrt/scene/gpu_scene.h"
 
 #include "kernel_utils.cuh"
 

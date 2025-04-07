@@ -31,7 +31,7 @@ inline __GPU__ Float FresnelSchlick(Float cos_theta_i, Float eta)
     Float R0 = Sqr((1 - eta) / (1 + eta));
 
     // Schlick's approximation for Fresnel reflectance
-    return R0 + (1 - R0) * std::pow(1 - cos_theta_i, 5);
+    return R0 + (1 - R0) * std::powf(1 - cos_theta_i, 5);
 }
 
 inline __GPU__ Float FresnelDielectric(Float cos_theta_i, Float eta)

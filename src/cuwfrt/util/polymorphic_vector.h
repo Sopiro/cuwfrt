@@ -1,9 +1,9 @@
 #pragma once
 
-#include "cuwfrt/cuda_api.h"
-#include "dynamic_dispatcher.h"
 #include <array>
 #include <vector>
+
+#include "dynamic_dispatcher.h"
 
 namespace cuwfrt
 {
