@@ -31,10 +31,9 @@ struct WavefrontMissRay
 struct WavefrontShadowRay
 {
     Ray ray;
-
-    Vec3 L;
     Float visibility;
 
+    Vec3 Li;
     int32 pixel_index;
 };
 

@@ -181,9 +181,20 @@ void RayTracer::RayTraceWavefront(int32 t)
             cudaCheck(cudaGetLastError());
         }
 
-        // Get counts of newly generated rays (next bounce and shadow)
-        cudaCheck(cudaMemcpy(&num_next_rays, wf.next_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+        // Get counts of newly generated rays (shadow)
         cudaCheck(cudaMemcpy(&num_shadow_rays, wf.shadow_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+
+        // Test shadow ray and incorporate direct light
+        if (num_shadow_rays > 0)
+        {
+            int32 threads = 128;
+            int32 blocks = (num_shadow_rays + threads - 1) / threads;
+            Connect<<<blocks, threads>>>(wf.shadow_rays, num_shadow_rays, d_sample_buffer, gpu_res.scene);
+            cudaCheck(cudaGetLastError());
+        }
+
+        // Get counts of newly generated rays (next bounce)
+        cudaCheck(cudaMemcpy(&num_next_rays, wf.next_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
 
         if (bounce++ >= options->max_bounces)
         {

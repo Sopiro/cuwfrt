@@ -266,7 +266,7 @@ static void Init()
     player.speed = 1.5f;
     player.damping = 100.0f;
 
-    options.max_bounces = 3;
+    options.max_bounces = 5;
 
     raytracer = new RayTracer(window, &scene, &camera, &options);
 

@@ -5,6 +5,7 @@
 #include "cuwfrt/raytracer.h"
 #include "kernel_intersect.cuh"
 #include "kernel_material.cuh"
+#include "kernel_utils.cuh"
 
 namespace cuwfrt
 {
@@ -93,7 +94,8 @@ __KERNEL__ void Miss(
 
     if (options.render_sky)
     {
-        sample_buffer[miss_ray.pixel_index] += Vec4(miss_ray.beta * SkyColor(miss_ray.d), 1);
+        Vec4& L = sample_buffer[miss_ray.pixel_index];
+        AtomicAdd(&L, miss_ray.beta * SkyColor(miss_ray.d));
     }
 }
 
@@ -123,24 +125,75 @@ __KERNEL__ void Shade(
     Vec4& L = sample_buffer[pixel_index];
     Vec3& beta = wf_ray.beta;
     RNG& rng = wf_ray.rng;
+    bool& specular_bounce = wf_ray.is_specular;
+    Float& prev_bsdf_pdf = wf_ray.last_bsdf_pdf;
 
     Vec3 wo = Normalize(-ray.d);
 
-    Material* m = GetMaterial(&scene, isect.prim);
+    Material* mat = GetMaterial(&scene, isect.prim);
 
-    if (Vec3 Le = m->Le(isect, wo); Le != Vec3(0))
+    if (Vec3 Le = mat->Le(isect, wo); Le != Vec3(0))
     {
-        L += Vec4(beta * Le, 1);
+        bool is_area_light = mat->Is<DiffuseLightMaterial>();
+        if (bounce == 0 || specular_bounce || !is_area_light)
+        {
+            AtomicAdd(&L, beta * Le);
+        }
+        else if (is_area_light)
+        {
+            // Evaluate BSDF sample with MIS for area light
+            Float light_sample_pmf = 1.0f / scene.light_count;
+            Float light_pdf = triangle::PDF(&scene, isect.prim, isect, ray) * light_sample_pmf;
+            Float mis_weight = PowerHeuristic(1, prev_bsdf_pdf, 1, light_pdf);
+
+            AtomicAdd(&L, beta * mis_weight * Le);
+        }
+    }
+
+    // Sample direct light
+    Float u0 = rng.NextFloat();
+    Point2 u12 = { rng.NextFloat(), rng.NextFloat() };
+    int32 light_index = std::min(int32(u0 * scene.light_count), scene.light_count - 1);
+    if (light_index >= 0)
+    {
+        PrimitiveIndex light = scene.light_indices[light_index];
+        Material* light_mat = GetMaterial(&scene, light);
+        Float light_sample_pmf = 1.0f / scene.light_count;
+
+        PrimitiveSample primitive_sample = triangle::Sample(&scene, light, isect.point, u12);
+
+        Vec3 wi = primitive_sample.point - isect.point;
+        Float visibility = wi.Normalize() - Ray::epsilon;
+        Vec3 Li = light_mat->Le(Intersection{ .front_face = Dot(primitive_sample.normal, wi) < 0 }, wo);
+
+        Float bsdf_pdf = mat->PDF(isect, wo, wi);
+        if (Li != Vec3(0) && bsdf_pdf != 0)
+        {
+            Float light_pdf = primitive_sample.pdf * light_sample_pmf;
+            Vec3 f_cos = mat->BSDF(&scene, isect, wo, wi) * AbsDot(isect.normal, wi);
+
+            Float mis_weight = PowerHeuristic(1, light_pdf, 1, bsdf_pdf);
+
+            int32 shadow_ray_index = atomicAdd(shadow_ray_count, 1);
+            shadow_rays[shadow_ray_index].ray = Ray(isect.point, wi);
+            shadow_rays[shadow_ray_index].visibility = visibility;
+            shadow_rays[shadow_ray_index].Li = beta * mis_weight * Li * f_cos / light_pdf;
+            shadow_rays[shadow_ray_index].pixel_index = pixel_index;
+        }
     }
 
     Scattering ss;
     Point2 u{ rng.NextFloat(), rng.NextFloat() };
-    if (!m->SampleBSDF(&ss, &scene, isect, wo, u))
+    if (!mat->SampleBSDF(&ss, &scene, isect, wo, u))
     {
         return;
     }
+    specular_bounce = ss.is_specular;
 
+    // Save bsdf pdf for MIS
+    prev_bsdf_pdf = ss.pdf;
     beta *= ss.s * AbsDot(isect.normal, ss.wi) / ss.pdf;
+    ray = Ray(isect.point + ss.wi * Ray::epsilon, ss.wi);
 
     if (bounce > 1)
     {
@@ -171,7 +224,12 @@ __KERNEL__ void Connect(
     if (index >= shadow_ray_count) return;
 
     WavefrontShadowRay& wf_shadow_ray = shadow_rays[index];
-    // todo
+
+    if (!IntersectAny(&scene, wf_shadow_ray.ray, Ray::epsilon, wf_shadow_ray.visibility))
+    {
+        Vec4& L = sample_buffer[wf_shadow_ray.pixel_index];
+        AtomicAdd(&L, wf_shadow_ray.Li);
+    }
 }
 
 // Finalize frame: average samples and apply gamma correction

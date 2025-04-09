@@ -21,4 +21,11 @@ inline __GPU__ Base* GetPolymorphicObject(
     return handlers[index.type_index](vectors, offsets, index.element_index);
 }
 
+inline __GPU__ void AtomicAdd(Vec4* a, const Vec3& b)
+{
+    atomicAdd(&a->x, b.x);
+    atomicAdd(&a->y, b.y);
+    atomicAdd(&a->z, b.z);
+}
+
 } // namespace cuwfrt
