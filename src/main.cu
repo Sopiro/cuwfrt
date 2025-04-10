@@ -75,7 +75,7 @@ static void Render()
     ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
     if (ImGui::Begin("cuwfrt", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::Text("%d fps", int32(io.Framerate));
+        ImGui::Text("%d fps %.6fms", int32(io.Framerate), io.DeltaTime);
         ImGui::Text("%d samples", std::min(time + 1, max_samples));
         ImGui::SetNextItemWidth(100);
         if (ImGui::SliderInt("max bounces", &options.max_bounces, 0, 64)) time = 0;

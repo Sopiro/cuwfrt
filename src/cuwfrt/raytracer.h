@@ -61,6 +61,7 @@ private:
     const Camera* camera;
     const Options* options;
 
+    cudaStream_t streams[2];
     GPUResources gpu_res;
     WavefrontResources wf;
 
