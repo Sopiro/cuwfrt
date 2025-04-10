@@ -9,6 +9,8 @@
 
 #include "cuwfrt/cuda_error.cuh"
 
+#include <chrono>
+
 using namespace alzartak;
 
 namespace cuwfrt
@@ -64,13 +66,30 @@ static void Render()
 
     ImGuiIO& io = ImGui::GetIO();
 
+    using clock = std::chrono::high_resolution_clock;
+
     // ImGui::ShowDemoWindow();
+    static clock::time_point t0;
+    static std::chrono::duration<double> tr;
+
+    if (time == max_samples)
+    {
+        tr = clock::now() - t0;
+    }
 
     ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
     if (ImGui::Begin("cuwfrt", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::Text("%d fps %.6fms", int32(io.Framerate), io.DeltaTime);
-        ImGui::Text("%d samples", std::min(time + 1, max_samples));
+        if (time < max_samples)
+        {
+            ImGui::Text("%d samples", std::min(time + 1, max_samples));
+        }
+        else
+        {
+            ImGui::Text("%d samples %.2fs to render", max_samples, tr);
+        }
+
         ImGui::SetNextItemWidth(100);
         if (ImGui::SliderInt("max bounces", &options.max_bounces, 0, 64)) time = 0;
         ImGui::SetNextItemWidth(100);
@@ -94,6 +113,11 @@ static void Render()
         if (ImGui::Combo("##", &selection, RayTracer::kernel_name, RayTracer::num_kernels)) time = 0;
     }
     ImGui::End();
+
+    if (time == 0)
+    {
+        t0 = clock::now();
+    }
 
     camera = Camera(player.position, GetForward(), y_axis, vfov, aperture, focus_dist, window->GetWindowSize());
     if (time < max_samples)
