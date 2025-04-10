@@ -63,8 +63,7 @@ __KERNEL__ void PathTraceNaive(
         }
 
         Scattering ss;
-        Point2 u{ rng.NextFloat(), rng.NextFloat() };
-        if (!m->SampleBSDF(&ss, &scene, isect, wo, u))
+        if (!m->SampleBSDF(&ss, &scene, isect, wo, rng.NextFloat(), { rng.NextFloat(), rng.NextFloat() }))
         {
             break;
         }

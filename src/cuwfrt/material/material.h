@@ -20,7 +20,12 @@ struct Scattering
     bool is_specular;
 };
 
-using Materials = TypePack<class DiffuseLightMaterial, class DiffuseMaterial, class MirrorMaterial, class DielectricMaterial>;
+using Materials = TypePack<
+    class DiffuseLightMaterial,
+    class DiffuseMaterial,
+    class MirrorMaterial,
+    class DielectricMaterial,
+    class PBRMaterial>;
 
 class Material : public DynamicDispatcher<Materials>
 {
@@ -35,8 +40,10 @@ protected:
 
 public:
     __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const;
-    __GPU__ bool SampleBSDF(Scattering* s, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Point2 u) const;
-    __GPU__ Float PDF(const Intersection& isect, const Vec3& wo, const Vec3& wi) const;
+    __GPU__ bool SampleBSDF(
+        Scattering* s, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Float u0, Point2 u12
+    ) const;
+    __GPU__ Float PDF(const GPUScene* scene, const Intersection& isect, const Vec3& wo, const Vec3& wi) const;
     __GPU__ Vec3 BSDF(const GPUScene* scene, const Intersection& isect, const Vec3& wo, const Vec3& wi) const;
 };
 

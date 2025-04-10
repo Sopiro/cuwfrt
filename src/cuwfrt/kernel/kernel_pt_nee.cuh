@@ -29,7 +29,7 @@ inline __GPU__ Vec3 SampleDirectLight(
     Float visibility = wi.Normalize() - Ray::epsilon;
     Vec3 Li = light_mat->Le(Intersection{ .front_face = Dot(primitive_sample.normal, wi) < 0 }, wo);
 
-    Float bsdf_pdf = mat->PDF(isect, wo, wi);
+    Float bsdf_pdf = mat->PDF(scene, isect, wo, wi);
     if (Li == Vec3(0) || bsdf_pdf == 0)
     {
         return Vec3(0);
@@ -119,8 +119,7 @@ __KERNEL__ void PathTraceNEE(
         L += SampleDirectLight(&scene, wo, isect, mat, rng.NextFloat(), { rng.NextFloat(), rng.NextFloat() }, beta);
 
         Scattering ss;
-        Point2 u{ rng.NextFloat(), rng.NextFloat() };
-        if (!mat->SampleBSDF(&ss, &scene, isect, wo, u))
+        if (!mat->SampleBSDF(&ss, &scene, isect, wo, rng.NextFloat(), { rng.NextFloat(), rng.NextFloat() }))
         {
             break;
         }
