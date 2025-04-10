@@ -12,9 +12,10 @@ struct Intersection
 {
     Float t;
     Point3 point;
+    Point2 uv;
 
     Vec3 normal; // Geometric normal
-    Point3 uvw;
+    Vec3 shading_normal;
 
     bool front_face;
 

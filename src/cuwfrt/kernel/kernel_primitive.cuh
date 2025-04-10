@@ -69,7 +69,7 @@ inline __GPU__ bool Intersect(
 
     isect->t = t;
     isect->point = ray.At(t);
-    isect->uvw = Point3(u, v, w);
+    isect->uv = Point2(u, v);
     Vec3 face_normal = Normalize(Cross(e1, e2));
 
     bool front_face = Dot(ray.d, face_normal) < 0;
@@ -77,6 +77,11 @@ inline __GPU__ bool Intersect(
 
     isect->front_face = front_face;
     isect->normal = sign * face_normal;
+
+    Vec3 n0 = scene->normals[index[0]];
+    Vec3 n1 = scene->normals[index[1]];
+    Vec3 n2 = scene->normals[index[2]];
+    isect->shading_normal = sign * Normalize(w * n0 + u * n1 + v * n2);
 
     return true;
 }
@@ -135,7 +140,9 @@ inline __GPU__ Point2 GetTexcoord(const GPUScene* scene, const Intersection& ise
     Point2 tc0 = scene->texcoords[index[0]];
     Point2 tc1 = scene->texcoords[index[1]];
     Point2 tc2 = scene->texcoords[index[2]];
-    return isect.uvw.z * tc0 + isect.uvw.x * tc1 + isect.uvw.y * tc2;
+
+    Float w = 1 - isect.uv[0] - isect.uv[1];
+    return w * tc0 + isect.uv.x * tc1 + isect.uv.y * tc2;
 }
 
 inline __GPU__ Vec3 GetNormal(const GPUScene* scene, const Intersection& isect)
@@ -144,7 +151,9 @@ inline __GPU__ Vec3 GetNormal(const GPUScene* scene, const Intersection& isect)
     Vec3 n0 = scene->normals[index[0]];
     Vec3 n1 = scene->normals[index[1]];
     Vec3 n2 = scene->normals[index[2]];
-    return Normalize(isect.uvw.z * n0 + isect.uvw.x * n1 + isect.uvw.y * n2);
+
+    Float w = 1 - isect.uv[0] - isect.uv[1];
+    return Normalize(w * n0 + isect.uv.x * n1 + isect.uv.y * n2);
 }
 
 inline __GPU__ Vec3 GetTangent(const GPUScene* scene, const Intersection& isect)
@@ -153,7 +162,9 @@ inline __GPU__ Vec3 GetTangent(const GPUScene* scene, const Intersection& isect)
     Vec3 t0 = scene->tangents[index[0]];
     Vec3 t1 = scene->tangents[index[1]];
     Vec3 t2 = scene->tangents[index[2]];
-    return Normalize(isect.uvw.z * t0 + isect.uvw.x * t1 + isect.uvw.y * t2);
+
+    Float w = 1 - isect.uv[0] - isect.uv[1];
+    return Normalize(w * t0 + isect.uv.x * t1 + isect.uv.y * t2);
 }
 
 inline __GPU__ PrimitiveSample Sample(const GPUScene* scene, PrimitiveIndex prim, Point2 u0)

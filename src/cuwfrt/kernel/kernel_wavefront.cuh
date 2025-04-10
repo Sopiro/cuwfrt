@@ -170,7 +170,7 @@ __KERNEL__ void Shade(
         if (Li != Vec3(0) && bsdf_pdf != 0)
         {
             Float light_pdf = primitive_sample.pdf * light_sample_pmf;
-            Vec3 f_cos = mat->BSDF(&scene, isect, wo, wi) * AbsDot(isect.normal, wi);
+            Vec3 f_cos = mat->BSDF(&scene, isect, wo, wi) * AbsDot(isect.shading_normal, wi);
 
             Float mis_weight = PowerHeuristic(1, light_pdf, 1, bsdf_pdf);
 
@@ -191,7 +191,7 @@ __KERNEL__ void Shade(
 
     // Save bsdf pdf for MIS
     prev_bsdf_pdf = ss.pdf;
-    beta *= ss.s * AbsDot(isect.normal, ss.wi) / ss.pdf;
+    beta *= ss.s * AbsDot(isect.shading_normal, ss.wi) / ss.pdf;
     ray = Ray(isect.point + ss.wi * Ray::epsilon, ss.wi);
 
     if (bounce > 1)

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cuda_runtime.h>
+
+#include "cuwfrt/common.h"
 #include "cuwfrt/cuda_api.h"
 #include "cuwfrt/util/polymorphic_vector.h"
 
@@ -12,9 +15,9 @@ inline __GPU__ Base* GetPolymorphicObject(
 )
 {
     using TypePack = TypePack<Types...>;
-    using Handler = Base* (*)(const uint8_t*, const int32*, int32_t);
+    using Handler = Base* (*)(const uint8*, const int32*, int32);
 
-    constexpr static Handler handlers[] = { [](const uint8* vectors, const int32* offsets, int32_t element_index) -> Base* {
+    constexpr static Handler handlers[] = { [](const uint8* vectors, const int32* offsets, int32 element_index) -> Base* {
         return (Types*)(vectors + offsets[detail::IndexOf<Types, TypePack>::value]) + element_index;
     }... };
 

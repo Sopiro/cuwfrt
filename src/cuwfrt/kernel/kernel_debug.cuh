@@ -55,7 +55,7 @@ __KERNEL__ void RenderNormal(
     int32 index = y * res.x + x;
     if (found_intersection)
     {
-        frame_buffer[index] = Vec4((isect.normal + 1) * 0.5, 1);
+        frame_buffer[index] = Vec4((isect.shading_normal + 1) * 0.5, 1);
     }
     else
     {

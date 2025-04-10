@@ -50,7 +50,7 @@ __KERNEL__ void RaytraceAO(
         wi_local.z = -wi_local.z;
     }
 
-    Frame frame(isect.normal);
+    Frame frame(isect.shading_normal);
     Vec3 wi = frame.FromLocal(wi_local);
 
     Vec4 occlusion;

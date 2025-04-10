@@ -78,7 +78,7 @@ public:
         Scattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Float u0, Point2 u12
     ) const
     {
-        Frame f(isect.normal);
+        Frame f(isect.shading_normal);
         Vec3 wi = SampleCosineHemisphere(u12);
         ss->pdf = CosineHemispherePDF(wi.z);
         ss->wi = f.FromLocal(wi);
@@ -90,7 +90,7 @@ public:
 
     __GPU__ Float PDF(const GPUScene* scene, const Intersection& isect, const Vec3& wo, const Vec3& wi) const
     {
-        Frame f(isect.normal);
+        Frame f(isect.shading_normal);
         Vec3 wi_local = f.ToLocal(wi);
         Vec3 wo_local = f.ToLocal(wo);
         if (!SameHemisphere(wi_local, wo_local))
@@ -103,7 +103,7 @@ public:
 
     __GPU__ Vec3 BSDF(const GPUScene* scene, const Intersection& isect, const Vec3& wo, const Vec3& wi) const
     {
-        Frame f(isect.normal);
+        Frame f(isect.shading_normal);
         Vec3 wi_local = f.ToLocal(wi);
         Vec3 wo_local = f.ToLocal(wo);
         if (!SameHemisphere(wi_local, wo_local))
@@ -151,7 +151,7 @@ public:
     ) const
     {
         ss->s = reflectance;
-        ss->wi = Reflect(wo, isect.normal);
+        ss->wi = Reflect(wo, isect.shading_normal);
         ss->pdf = 1;
         ss->is_specular = true;
 
@@ -192,7 +192,7 @@ public:
         Scattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Float u0, Point2 u12
     ) const
     {
-        Frame f(isect.normal);
+        Frame f(isect.shading_normal);
         Vec3 wo_local = f.ToLocal(wo);
 
         // Sample perfect specular dielectric BSDF
@@ -272,7 +272,7 @@ public:
         Scattering* ss, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Float u0, Point2 u12
     ) const
     {
-        Frame f(isect.normal);
+        Frame f(isect.shading_normal);
 
         Vec3 wo_local = f.ToLocal(wo);
         if (wo_local.z == 0)
@@ -289,7 +289,7 @@ public:
         constexpr Vec3 coefficient(0.2126f, 0.7152f, 0.0722f);
 
         Vec3 f0 = mf::F0(basecolor, metallic);
-        Vec3 F = mf::F_Schlick(f0, Dot(wo, isect.normal));
+        Vec3 F = mf::F_Schlick(f0, Dot(wo, isect.shading_normal));
         Float diff_weight = (1 - metallic);
         Float spec_weight = Dot(coefficient, F);
         // Float spec_weight = std::fmax(F.x, std::fmax(F.y, F.z));
@@ -336,7 +336,7 @@ public:
 
     __GPU__ Float PDF(const GPUScene* scene, const Intersection& isect, const Vec3& wo, const Vec3& wi) const
     {
-        Frame f(isect.normal);
+        Frame f(isect.shading_normal);
         Vec3 wi_local = f.ToLocal(wi);
         Vec3 wo_local = f.ToLocal(wo);
         if (!SameHemisphere(wi_local, wo_local))
@@ -365,7 +365,7 @@ public:
         constexpr Vec3 coefficient(0.2126f, 0.7152f, 0.0722f);
 
         Vec3 f0 = mf::F0(basecolor, metallic);
-        Vec3 F = mf::F_Schlick(f0, Dot(wo, isect.normal));
+        Vec3 F = mf::F_Schlick(f0, Dot(wo, isect.shading_normal));
         Float diff_weight = (1 - metallic);
         Float spec_weight = Dot(coefficient, F);
         // Float spec_weight = std::fmax(F.x, std::fmax(F.y, F.z));
@@ -379,7 +379,7 @@ public:
 
     __GPU__ Vec3 BSDF(const GPUScene* scene, const Intersection& isect, const Vec3& wo, const Vec3& wi) const
     {
-        Frame f(isect.normal);
+        Frame f(isect.shading_normal);
         Vec3 wi_local = f.ToLocal(wi);
         Vec3 wo_local = f.ToLocal(wo);
         if (!SameHemisphere(wi_local, wo_local))

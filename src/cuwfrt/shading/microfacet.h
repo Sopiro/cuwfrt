@@ -84,8 +84,7 @@ inline __GPU__ Float PDF(const Vec3& w, const Vec3& wm, Float alpha_x, Float alp
 
 inline __GPU__ Vec3 Sample_Wm(const Vec3& w, Float alpha_x, Float alpha_y, Point2 u12)
 {
-    Vec3 wm = Sample_GGX_VNDF_Dupuy_Benyoub(w, alpha_x, alpha_y, u12);
-    return wm;
+    return Sample_GGX_VNDF_Dupuy_Benyoub(w, alpha_x, alpha_y, u12);
 }
 
 } // namespace mf

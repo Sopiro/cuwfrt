@@ -42,7 +42,7 @@ inline __GPU__ Vec3 SampleDirectLight(
     }
 
     Float light_pdf = primitive_sample.pdf * light_sample_pmf;
-    Vec3 f_cos = mat->BSDF(scene, isect, wo, wi) * AbsDot(isect.normal, wi);
+    Vec3 f_cos = mat->BSDF(scene, isect, wo, wi) * AbsDot(isect.shading_normal, wi);
 
     Float mis_weight = PowerHeuristic(1, light_pdf, 1, bsdf_pdf);
     return beta * mis_weight * Li * f_cos / light_pdf;
@@ -127,7 +127,8 @@ __KERNEL__ void PathTraceNEE(
 
         // Save bsdf pdf for MIS
         prev_bsdf_pdf = ss.pdf;
-        beta *= ss.s * AbsDot(isect.normal, ss.wi) / ss.pdf;
+
+        beta *= ss.s * AbsDot(isect.shading_normal, ss.wi) / ss.pdf;
         ray = Ray(isect.point + ss.wi * Ray::epsilon, ss.wi);
 
         if (bounce > 1)

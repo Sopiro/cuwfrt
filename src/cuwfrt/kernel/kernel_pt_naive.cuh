@@ -68,7 +68,7 @@ __KERNEL__ void PathTraceNaive(
             break;
         }
 
-        beta *= ss.s * AbsDot(isect.normal, ss.wi) / ss.pdf;
+        beta *= ss.s * AbsDot(isect.shading_normal, ss.wi) / ss.pdf;
 
         if (bounce > 1)
         {
