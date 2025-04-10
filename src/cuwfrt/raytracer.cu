@@ -191,6 +191,11 @@ void RayTracer::RayTraceWavefront(int32 t)
             cudaCheckLastError();
         }
 
+        if (bounce++ >= options->max_bounces)
+        {
+            break;
+        }
+
         // Get counts of newly generated rays (shadow and next bounce)
         cudaCheck(cudaMemcpyAsync(&num_shadow_rays, wf.shadow_ray_count, sizeof(int32), cudaMemcpyDeviceToHost, streams[1]));
 
@@ -201,11 +206,6 @@ void RayTracer::RayTraceWavefront(int32 t)
             int32 blocks = (num_shadow_rays + threads - 1) / threads;
             Connect<<<blocks, threads, 0, streams[1]>>>(wf.shadow_rays, num_shadow_rays, d_sample_buffer, gpu_res.scene);
             cudaCheckLastError();
-        }
-
-        if (bounce++ >= options->max_bounces)
-        {
-            break;
         }
 
         cudaCheck(cudaMemcpyAsync(&num_next_rays, wf.next_ray_count, sizeof(int32), cudaMemcpyDeviceToHost, streams[1]));

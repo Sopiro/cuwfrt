@@ -125,11 +125,14 @@ static void BuildScene()
         }
     }
 
-    static MaterialIndex white = scene.AddMaterial<DiffuseMaterial>(Vec3{ .73f, .73f, .73f });
-    // SetFallbackMaterial(white);
+    // static MaterialIndex mirror = scene.AddMaterial<MirrorMaterial>(Vec3{ .73f, .73f, .73f });
+    // SetLoaderFallbackMaterial(mirror);
+
+    // static MaterialIndex white = scene.AddMaterial<DiffuseMaterial>(Vec3{ .73f, .73f, .73f });
+    // SetLoaderFallbackMaterial(white);
 
     static MaterialIndex glass = scene.AddMaterial<DielectricMaterial>(1.5f, Vec3(1.0f));
-    SetFallbackMaterial(glass);
+    SetLoaderFallbackMaterial(glass);
 
     LoadModel(
         scene, "Z:/dev/cpp_workspace/Bulbit/res/stanford/lucy.obj", Transform(Vec3(0.66f, 0.28f, -0.33f), identity, Vec3(0.5f))
@@ -139,6 +142,7 @@ static void BuildScene()
     // Vec3(0.01f)));
 
     // LoadModel(scene, "C:/Users/sopir/Desktop/untitled.gltf", identity);
+    // LoadModel(scene, "Z:/dev/cpp_workspace/Bulbit/res/stanford/bunny.obj", { Vec3(0), identity, Vec3(0.5f) });
 }
 
 static void SetImGuiStyle()

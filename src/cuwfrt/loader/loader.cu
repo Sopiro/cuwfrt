@@ -18,7 +18,25 @@ static bool g_force_fallback_material = false;
 static MaterialIndex g_fallback_material = { Material::TypeIndexOf<DiffuseMaterial>(), 0 };
 static std::vector<MaterialIndex> g_materials;
 
-void SetFallbackMaterial(MaterialIndex material_index)
+static bool g_flip_normal = false;
+static bool g_flip_texcoord = false;
+
+void SetLoaderFlipNormal(bool flip_normal)
+{
+    g_flip_normal = flip_normal;
+}
+
+void SetLoaderFlipTexcoord(bool flip_texcoord)
+{
+    g_flip_texcoord = flip_texcoord;
+}
+
+void SetLoaderUseForceFallbackMaterial(bool force_use_fallback_material)
+{
+    g_force_fallback_material = force_use_fallback_material;
+}
+
+void SetLoaderFallbackMaterial(MaterialIndex material_index)
 {
     g_fallback_material = material_index;
 }
@@ -193,6 +211,25 @@ static bool LoadMesh(Scene& scene, tinygltf::Model& model, tinygltf::Mesh& mesh,
 
         default:
             return false;
+        }
+
+        // post-processes
+        {
+            if (g_flip_normal)
+            {
+                for (size_t i = 0; i < normals.size(); ++i)
+                {
+                    normals[i].Negate();
+                }
+            }
+
+            if (!g_flip_texcoord)
+            {
+                for (size_t i = 0; i < texcoords.size(); ++i)
+                {
+                    texcoords[i].y = -texcoords[i].y;
+                }
+            }
         }
 
         TriangleMesh tri_mesh(positions, normals, tangents, texcoords, indices, transform);
@@ -384,6 +421,11 @@ void LoadOBJ(Scene& scene, std::filesystem::path filename, const Transform& tran
                     normal.x = attrib.normals[3 * size_t(idx.normal_index) + 0];
                     normal.y = attrib.normals[3 * size_t(idx.normal_index) + 1];
                     normal.z = attrib.normals[3 * size_t(idx.normal_index) + 2];
+
+                    if (g_flip_normal)
+                    {
+                        normal.Negate();
+                    }
                 }
 
                 // Retrieve texture coordinates if available.
@@ -392,6 +434,11 @@ void LoadOBJ(Scene& scene, std::filesystem::path filename, const Transform& tran
                 {
                     texcoord.x = attrib.texcoords[2 * size_t(idx.texcoord_index) + 0];
                     texcoord.y = attrib.texcoords[2 * size_t(idx.texcoord_index) + 1];
+
+                    if (g_flip_texcoord)
+                    {
+                        texcoord.y = 1 - texcoord.y;
+                    }
                 }
 
                 // Calculate tangent from the normal (since OBJ usually doesn't provide tangents).
