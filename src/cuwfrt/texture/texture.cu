@@ -10,7 +10,16 @@ using namespace alzartak;
 
 Texture::Texture(const TextureDesc& td)
 {
-    Image4 image = alzartak::ReadImage4(td.filename, td.non_color);
+    Image4 image;
+    if (td.is_constant)
+    {
+        image = Image4(1, 1);
+        image[0] = Vec4(td.color, 1);
+    }
+    else
+    {
+        image = alzartak::ReadImage4(td.filename, td.non_color);
+    }
 
     // Create CUDA array and texture objext
     cudaChannelFormatDesc channel_desc = cudaCreateChannelDesc<float4>();

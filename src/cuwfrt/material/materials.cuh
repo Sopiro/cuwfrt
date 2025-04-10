@@ -3,7 +3,7 @@
 #include "cuwfrt/material/material.h"
 
 #include "cuwfrt/geometry/intersection.h"
-#include "cuwfrt/shading/microfacet.cuh"
+#include "cuwfrt/shading/microfacet.h"
 
 #include "cuwfrt/kernel/kernel_primitive.cuh"
 #include "cuwfrt/kernel/kernel_texture.cuh"

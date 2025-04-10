@@ -125,13 +125,13 @@ static void BuildScene()
         }
     }
 
-    // static MaterialIndex mirror = scene.AddMaterial<MirrorMaterial>(Vec3{ .73f, .73f, .73f });
+    //  MaterialIndex mirror = scene.AddMaterial<MirrorMaterial>(Vec3{ .73f, .73f, .73f });
     // SetLoaderFallbackMaterial(mirror);
 
-    // static MaterialIndex white = scene.AddMaterial<DiffuseMaterial>(Vec3{ .73f, .73f, .73f });
+    // MaterialIndex white = scene.AddMaterial<DiffuseMaterial>(Vec3{ .73f, .73f, .73f });
     // SetLoaderFallbackMaterial(white);
 
-    static MaterialIndex glass = scene.AddMaterial<DielectricMaterial>(1.5f, Vec3(1.0f));
+    MaterialIndex glass = scene.AddMaterial<DielectricMaterial>(1.5f, Vec3(1.0f));
     SetLoaderFallbackMaterial(glass);
 
     LoadModel(

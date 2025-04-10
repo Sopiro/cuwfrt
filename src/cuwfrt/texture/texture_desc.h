@@ -10,6 +10,9 @@ struct TextureDesc
     std::string filename;
     bool non_color;
 
+    bool is_constant;
+    Vec3 color;
+
     bool operator==(const TextureDesc& o) const = default;
     bool operator!=(const TextureDesc& o) const = default;
 };

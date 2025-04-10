@@ -7,23 +7,23 @@
 #include "cuwfrt/shading/sampling.h"
 #include "cuwfrt/shading/scattering.h"
 
+#define mf_default_reflectance Vec3(0.04f)
+#define mf_min_alpha (0.003f)
+
 namespace cuwfrt
 {
 
 namespace mf
 {
 
-const __GPU__ Vec3 default_reflectance = Vec3(0.04f);
-const __GPU__ Float min_alpha = 0.003f;
-
 inline __GPU__ Float RoughnessToAlpha(Float roughness)
 {
-    return std::fmax(roughness * roughness, min_alpha);
+    return std::fmax(roughness * roughness, mf_min_alpha);
 }
 
 inline __GPU__ Vec3 F0(Vec3 basecolor, Float metallic)
 {
-    return Lerp(default_reflectance, basecolor, metallic);
+    return Lerp(mf_default_reflectance, basecolor, metallic);
 }
 
 inline __GPU__ Vec3 F_Schlick(Vec3 f0, Float cosine_theta)
