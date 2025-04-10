@@ -4,10 +4,16 @@
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 
+#include "cuwfrt/kernel/kernel_ao.cuh"
+#include "cuwfrt/kernel/kernel_debug.cuh"
+#include "cuwfrt/kernel/kernel_pt_naive.cuh"
+#include "cuwfrt/kernel/kernel_pt_nee.cuh"
 #include "cuwfrt/kernel/kernel_wavefront.cuh"
 
 namespace cuwfrt
 {
+
+static Kernel* kernels[RayTracer::num_kernels] = { RenderGradient, RenderNormal, RaytraceAO, PathTraceNaive, PathTraceNEE };
 
 RayTracer::RayTracer(Window* window, const Scene* scene, const Camera* camera, const Options* options)
     : window{ window }
@@ -110,21 +116,19 @@ void RayTracer::Resize(int32 width, int32 height)
     wf.Resize(res);
 }
 
-void RayTracer::RayTrace(Kernel* kernel, int32 t)
+void RayTracer::RayTrace(int32 kernel_index, int32 t)
 {
     time = t;
+    kernel_index = (kernel_index + num_kernels) % num_kernels;
 
-    if (kernel)
-    {
-        // Render to the PBO using CUDA
-        const dim3 threads(8, 8);
-        const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
+    // Render to the PBO using CUDA
+    const dim3 threads(8, 8);
+    const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-        kernel<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_res.scene, *camera, *options, time);
+    kernels[kernel_index]<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_res.scene, *camera, *options, time);
 
-        cudaCheckLastError();
-        cudaCheck(cudaDeviceSynchronize());
-    }
+    cudaCheckLastError();
+    cudaCheck(cudaDeviceSynchronize());
 }
 
 void RayTracer::RayTraceWavefront(int32 t)

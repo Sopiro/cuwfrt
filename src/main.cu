@@ -5,11 +5,6 @@
 #include "cuwfrt/scene/builder.cuh"
 #include "cuwfrt/util/parallel.h"
 
-#include "cuwfrt/kernel/kernel_ao.cuh"
-#include "cuwfrt/kernel/kernel_debug.cuh"
-#include "cuwfrt/kernel/kernel_pt_naive.cuh"
-#include "cuwfrt/kernel/kernel_pt_nee.cuh"
-
 #include "cuwfrt/loader/loader.cuh"
 
 #include "cuwfrt/cuda_error.cuh"
@@ -34,9 +29,6 @@ static Float vfov = 71;
 static Float aperture = 0;
 static Float focus_dist = 1;
 
-static const int32 num_kernels = 6;
-static const char* name[num_kernels] = { "Gradient", "Normal", "AO", "Pathtrace Naive", "Pathtrace NEE", "Wavefront" };
-static Kernel* kernels[num_kernels] = { RenderGradient, RenderNormal, RaytraceAO, PathTraceNaive, PathTraceNEE };
 static int32 selection = 5;
 
 static Vec3 GetForward()
@@ -99,7 +91,7 @@ static void Render()
         }
         ImGui::Separator();
         if (ImGui::Checkbox("Render sky", &options.render_sky)) time = 0;
-        if (ImGui::Combo("##Render sky", &selection, name, num_kernels)) time = 0;
+        if (ImGui::Combo("##", &selection, RayTracer::kernel_name, RayTracer::num_kernels)) time = 0;
     }
     ImGui::End();
 
@@ -112,7 +104,7 @@ static void Render()
         }
         else
         {
-            raytracer->RayTrace(kernels[selection], time);
+            raytracer->RayTrace(selection, time);
         }
     }
 

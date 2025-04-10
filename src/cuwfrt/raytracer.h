@@ -28,10 +28,14 @@ using Kernel = void(Vec4*, Vec4*, Point2i, GPUScene, Camera, Options, int32);
 class RayTracer
 {
 public:
+    static inline const int32 num_kernels = 6;
+    static inline const char* kernel_name[num_kernels] = { "Gradient",        "Normal",        "AO",
+                                                           "Pathtrace Naive", "Pathtrace NEE", "Wavefront" };
+
     RayTracer(Window* window, const Scene* scene, const Camera* camera, const Options* options);
     ~RayTracer();
 
-    void RayTrace(Kernel* kernel, int32 time);
+    void RayTrace(int32 kernel_index, int32 time);
     void RayTraceWavefront(int32 time);
     void DrawFrame();
 
