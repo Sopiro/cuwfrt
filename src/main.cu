@@ -12,6 +12,8 @@
 
 #include "cuwfrt/loader/loader.cuh"
 
+#include "cuwfrt/cuda_error.cuh"
+
 using namespace alzartak;
 
 namespace cuwfrt
@@ -243,9 +245,50 @@ static void SetImGuiStyle()
 #endif
 }
 
+static void InitCudaDevice()
+{
+    int device_count = 0;
+    cudaCheck(cudaGetDeviceCount(&device_count));
+
+    if (device_count == 0)
+    {
+        std::cerr << "No CUDA devices found!" << std::endl;
+        exit(1);
+    }
+
+    std::cout << "Available CUDA devices: " << device_count << std::endl;
+
+    int best_device = 0;
+    int best_score = -1;
+
+    for (int i = 0; i < device_count; ++i)
+    {
+        cudaDeviceProp props;
+        cudaCheck(cudaGetDeviceProperties(&props, i));
+
+        int score = 0;
+        score += props.multiProcessorCount * 1000;
+        score += int(props.totalGlobalMem) / (1024 * 1024 * 128);
+
+        std::cout << i << ": " << props.name << " (SMs: " << props.multiProcessorCount
+                  << ", Mem: " << (props.totalGlobalMem >> 20) << " MB)" << std::endl;
+
+        if (score > best_score)
+        {
+            best_score = score;
+            best_device = i;
+        }
+    }
+
+    std::cout << "CUDA device set to " << best_device << std::endl;
+    cudaCheck(cudaSetDevice(best_device));
+}
+
 static void Init()
 {
     ThreadPool::global_thread_pool.reset(new ThreadPool(std::thread::hardware_concurrency()));
+
+    InitCudaDevice();
 
     window = Window::Init(1280, 720, "cuda RTRT");
 
