@@ -4,6 +4,7 @@
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 
+#include "cuwfrt/kernel/kernel_albedo.cuh"
 #include "cuwfrt/kernel/kernel_ao.cuh"
 #include "cuwfrt/kernel/kernel_debug.cuh"
 #include "cuwfrt/kernel/kernel_pt_naive.cuh"
@@ -13,7 +14,11 @@
 namespace cuwfrt
 {
 
-static Kernel* kernels[RayTracer::num_kernels] = { RenderGradient, RenderNormal, RaytraceAO, PathTraceNaive, PathTraceNEE };
+const int32 RayTracer::num_kernels = 7;
+const char* RayTracer::kernel_name[] = { "Gradient", "Normal", "AO", "Albedo", "Pathtrace Naive", "Pathtrace NEE", "Wavefront" };
+
+static Kernel* kernels[RayTracer::num_kernels] = { RenderGradient, RenderNormal,   RaytraceAO,
+                                                   RaytraceAlbedo, PathTraceNaive, PathTraceNEE };
 
 RayTracer::RayTracer(Window* window, const Scene* scene, const Camera* camera, const Options* options)
     : window{ window }

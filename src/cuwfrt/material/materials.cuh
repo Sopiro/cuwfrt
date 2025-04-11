@@ -4,6 +4,7 @@
 
 #include "cuwfrt/geometry/intersection.h"
 #include "cuwfrt/shading/microfacet.h"
+#include "cuwfrt/shading/scattering.h"
 
 #include "cuwfrt/kernel/kernel_primitive.cuh"
 #include "cuwfrt/kernel/kernel_texture.cuh"
@@ -51,6 +52,11 @@ public:
         return Vec3(0);
     }
 
+    __GPU__ Vec3 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
+    {
+        return Vec3(1);
+    }
+
     Vec3 emission;
 };
 
@@ -83,7 +89,7 @@ public:
         ss->pdf = CosineHemispherePDF(wi.z);
         ss->wi = f.FromLocal(wi);
         ss->is_specular = false;
-        ss->s = BSDF(scene, isect);
+        ss->s = Lambertian(scene, isect);
 
         return true;
     }
@@ -111,13 +117,27 @@ public:
             return Vec3(0);
         }
 
-        return BSDF(scene, isect);
+        return Lambertian(scene, isect);
+    }
+
+    __GPU__ Vec3 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
+    {
+        if (r.x < 0)
+        {
+            Point2 uv = triangle::GetTexcoord(scene, isect);
+            Vec3 tex = SampleTexture(scene, TextureIndex(r.z), uv);
+            return tex;
+        }
+        else
+        {
+            return r;
+        }
     }
 
     Vec3 r;
 
 private:
-    __GPU__ Vec3 BSDF(const GPUScene* scene, const Intersection& isect) const
+    __GPU__ Vec3 Lambertian(const GPUScene* scene, const Intersection& isect) const
     {
         if (r.x < 0)
         {
@@ -166,6 +186,11 @@ public:
     __GPU__ Vec3 BSDF(const GPUScene* scene, const Intersection& isect, const Vec3& wo, const Vec3& wi) const
     {
         return Vec3(0);
+    }
+
+    __GPU__ Vec3 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
+    {
+        return reflectance;
     }
 
     Vec3 reflectance;
@@ -246,6 +271,11 @@ public:
     __GPU__ Vec3 BSDF(const GPUScene* scene, const Intersection& isect, const Vec3& wo, const Vec3& wi) const
     {
         return Vec3(0);
+    }
+
+    __GPU__ Vec3 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
+    {
+        return rho(this, scene, isect, wo);
     }
 
     Float eta;
@@ -416,6 +446,11 @@ public:
         return f_d + f_s;
     }
 
+    __GPU__ Vec3 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
+    {
+        return rho(this, scene, isect, wo);
+    }
+
     TextureIndex tex_basecolor, tex_metallic, tex_roughness;
 };
 
@@ -439,6 +474,11 @@ inline __GPU__ Float Material::PDF(const GPUScene* scene, const Intersection& is
 inline __GPU__ Vec3 Material::BSDF(const GPUScene* scene, const Intersection& isect, const Vec3& wo, const Vec3& wi) const
 {
     return Dispatch([&](auto mat) { return mat->BSDF(scene, isect, wo, wi); });
+}
+
+inline __GPU__ Vec3 Material::Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
+{
+    return Dispatch([&](auto mat) { return mat->Albedo(scene, isect, wo); });
 }
 
 } // namespace cuwfrt

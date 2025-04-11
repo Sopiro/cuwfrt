@@ -31,7 +31,7 @@ static Float vfov = 71;
 static Float aperture = 0;
 static Float focus_dist = 1;
 
-static int32 selection = 5;
+static int32 selection = RayTracer::num_kernels - 1;
 
 static Vec3 GetForward()
 {
