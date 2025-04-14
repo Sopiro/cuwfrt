@@ -51,7 +51,7 @@ __KERNEL__ void PathTraceNaive(
 
         Material* m = GetMaterial(&scene, isect.prim);
 
-        if (Vec3 Le = m->Le(isect, wo); Le != Vec3(0))
+        if (Vec3 Le = m->Le(&scene, isect, wo); Le != Vec3(0))
         {
             L += beta * Le;
             break;

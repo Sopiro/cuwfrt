@@ -48,7 +48,7 @@ static void LoadMaterials(Scene& scene, tinygltf::Model& model)
         tinygltf::Material& gltf_material = model.materials[i];
         tinygltf::PbrMetallicRoughness& pbr = gltf_material.pbrMetallicRoughness;
 
-        TextureIndex basecolor_texture, metallic_texture, roughness_texture;
+        TextureIndex basecolor_texture, metallic_texture, roughness_texture, emissive_texture;
 
         Vec3 basecolor_factor = { Float(pbr.baseColorFactor[0]), Float(pbr.baseColorFactor[1]), Float(pbr.baseColorFactor[2]) };
         Float metallic_factor = Float(pbr.metallicFactor);
@@ -104,21 +104,23 @@ static void LoadMaterials(Scene& scene, tinygltf::Model& model)
         // }
 
         // emission
-        // {
-        //     if (gltf_material.emissiveTexture.index > -1)
-        //     {
-        //         tinygltf::Texture& texture = model.textures[gltf_material.emissiveTexture.index];
-        //         tinygltf::Image& image = model.images[texture.source];
+        {
+            if (gltf_material.emissiveTexture.index > -1)
+            {
+                tinygltf::Texture& texture = model.textures[gltf_material.emissiveTexture.index];
+                tinygltf::Image& image = model.images[texture.source];
 
-        //         emission_texture = CreateSpectrumImageTexture(scene, g_folder + image.uri);
-        //     }
-        //     else
-        //     {
-        //         emission_texture = CreateSpectrumConstantTexture(scene, emission_factor);
-        //     }
-        // }
+                emissive_texture = scene.AddTexture({ .filename = g_folder + image.uri, .non_color = false });
+            }
+            else
+            {
+                emissive_texture = scene.AddTexture({ .is_constant = true, .color = Vec3(emission_factor) });
+            }
+        }
 
-        g_materials.push_back(scene.AddMaterial<PBRMaterial>(basecolor_texture, metallic_texture, roughness_texture));
+        g_materials.push_back(
+            scene.AddMaterial<PBRMaterial>(basecolor_texture, metallic_texture, roughness_texture, emissive_texture)
+        );
     }
 }
 
@@ -415,18 +417,18 @@ static MaterialIndex CreateOBJMaterial(Scene& scene, const tinyobj::material_t& 
     //     normal_texture = scene.AddTexture({ .filename = root + mat.bump_texname, .non_color = true });
     // }
 
-    // // Create an emission texture if provided, otherwise use a constant emission texture.
-    // TextureIndex emission_texture;
-    // if (!mat.emissive_texname.empty())
-    // {
-    //     emission_texture = scene.AddTexture({ .filename = root + mat.emissive_texname });
-    // }
-    // else
-    // {
-    //     emission_texture = scene.AddTexture({ .is_constant = true, .color = emission_factor });
-    // }
+    // Create an emission texture if provided, otherwise use a constant emission texture.
+    TextureIndex emission_texture;
+    if (!mat.emissive_texname.empty())
+    {
+        emission_texture = scene.AddTexture({ .filename = root + mat.emissive_texname });
+    }
+    else
+    {
+        emission_texture = scene.AddTexture({ .is_constant = true, .color = emission_factor });
+    }
 
-    return scene.AddMaterial<PBRMaterial>(basecolor_texture, metallic_texture, roughness_texture);
+    return scene.AddMaterial<PBRMaterial>(basecolor_texture, metallic_texture, roughness_texture, emission_texture);
 }
 
 // Structure to accumulate mesh data grouped by material.

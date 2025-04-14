@@ -23,7 +23,7 @@ public:
     {
     }
 
-    __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const
+    __GPU__ Vec3 Le(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
     {
         if (isect.front_face)
         {
@@ -75,7 +75,7 @@ public:
     {
     }
 
-    __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const
+    __GPU__ Vec3 Le(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
     {
         return Vec3(0);
     }
@@ -161,7 +161,7 @@ public:
     {
     }
 
-    __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const
+    __GPU__ Vec3 Le(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
     {
         return Vec3(0);
     }
@@ -208,7 +208,7 @@ public:
         r[2] = __float2half(reflectance[2]);
     }
 
-    __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const
+    __GPU__ Vec3 Le(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
     {
         return Vec3(0);
     }
@@ -285,17 +285,26 @@ public:
 class alignas(16) PBRMaterial : public Material
 {
 public:
-    PBRMaterial(TextureIndex basecolor, TextureIndex matallic, TextureIndex roughness)
+    PBRMaterial(TextureIndex basecolor, TextureIndex matallic, TextureIndex roughness, TextureIndex emissive = -1)
         : Material(Material::TypeIndexOf<PBRMaterial>())
         , tex_basecolor{ basecolor }
         , tex_metallic{ matallic }
         , tex_roughness{ roughness }
+        , tex_emissive{ emissive }
     {
     }
 
-    __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const
+    __GPU__ Vec3 Le(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
     {
-        return Vec3(0);
+        if (tex_emissive > 0)
+        {
+            Point2 uv = triangle::GetTexcoord(scene, isect);
+            return SampleTexture(scene, tex_emissive, uv);
+        }
+        else
+        {
+            return Vec3(0);
+        }
     }
 
     __GPU__ bool SampleBSDF(
@@ -451,12 +460,13 @@ public:
         return rho(this, scene, isect, wo);
     }
 
-    TextureIndex tex_basecolor, tex_metallic, tex_roughness;
+    TextureIndex tex_basecolor, tex_metallic, tex_roughness, tex_emissive;
+    TextureIndex padding[2];
 };
 
-inline __GPU__ Vec3 Material::Le(const Intersection& isect, const Vec3& wo) const
+inline __GPU__ Vec3 Material::Le(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
 {
-    return Dispatch([&](auto mat) { return mat->Le(isect, wo); });
+    return Dispatch([&](auto mat) { return mat->Le(scene, isect, wo); });
 }
 
 inline __GPU__ bool Material::SampleBSDF(

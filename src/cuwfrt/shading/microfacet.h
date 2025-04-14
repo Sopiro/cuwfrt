@@ -8,7 +8,7 @@
 #include "cuwfrt/shading/scattering.h"
 
 #define mf_default_reflectance Vec3(0.04f)
-#define mf_min_alpha (0.003f)
+#define mf_min_alpha (0.01f)
 
 namespace cuwfrt
 {

@@ -39,7 +39,7 @@ protected:
     }
 
 public:
-    __GPU__ Vec3 Le(const Intersection& isect, const Vec3& wo) const;
+    __GPU__ Vec3 Le(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const;
     __GPU__ bool SampleBSDF(
         Scattering* s, const GPUScene* scene, const Intersection& isect, const Vec3& wo, Float u0, Point2 u12
     ) const;

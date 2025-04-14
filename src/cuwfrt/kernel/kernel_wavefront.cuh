@@ -142,7 +142,7 @@ __KERNEL__ void Closest(
 
     MaterialType* mat = GetMaterial(&scene, isect.prim)->Cast<MaterialType>();
 
-    if (Vec3 Le = mat->Le(isect, wo); Le != Vec3(0))
+    if (Vec3 Le = mat->Le(&scene, isect, wo); Le != Vec3(0))
     {
         bool is_area_light = mat->type_index == Material::TypeIndexOf<DiffuseLightMaterial>();
         if (bounce == 0 || specular_bounce || !is_area_light)
@@ -174,7 +174,7 @@ __KERNEL__ void Closest(
 
         Vec3 wi = primitive_sample.point - isect.point;
         Float visibility = wi.Normalize() - Ray::epsilon;
-        Vec3 Li = light_mat->Le(Intersection{ .front_face = Dot(primitive_sample.normal, wi) < 0 }, wo);
+        Vec3 Li = light_mat->Le(&scene, Intersection{ .front_face = Dot(primitive_sample.normal, wi) < 0 }, wo);
 
         Float bsdf_pdf = mat->PDF(&scene, isect, wo, wi);
         if (Li != Vec3(0) && bsdf_pdf != 0)

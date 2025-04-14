@@ -17,6 +17,6 @@ struct TextureDesc
     bool operator!=(const TextureDesc& o) const = default;
 };
 
-using TextureIndex = int32;
+using TextureIndex = int16;
 
 } // namespace cuwfrt

@@ -18,7 +18,7 @@ TextureIndex Scene::AddTexture(TextureDesc tex)
         }
     }
 
-    TextureIndex ti = int32(textures.size());
+    TextureIndex ti = TextureIndex(textures.size());
     textures.push_back(std::move(tex));
     return ti;
 }

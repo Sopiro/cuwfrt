@@ -173,6 +173,7 @@ static void BuildScene()
 
     // LoadModel(scene, "Z:/dev/cpp_workspace/Bulbit/res/sponza/glTF/Sponza.gltf", Transform(Vec3(0, 0, 0), identity,
     // Vec3(0.01f)));
+
     // LoadModel(
     //     scene, "Z:/dev/cpp_workspace/Bulbit/res/DamagedHelmet/DamagedHelmet.gltf",
     //     Transform(Vec3(0.7f, 0.5f, -0.5f), Quat::FromEuler({ pi / 2, -pi / 4, 0 }), Vec3(0.2f))
