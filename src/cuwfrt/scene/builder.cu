@@ -1,4 +1,4 @@
-#include "builder.cuh"
+#include "builder.h"
 
 namespace cuwfrt
 {

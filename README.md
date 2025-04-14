@@ -11,3 +11,12 @@ Raytracer written in CUDA
 - Model loaders
   - [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader) and [tinygltf](https://github.com/syoyo/tinygltf)
 - Interaction with [imgui](https://github.com/ocornut/imgui) and CUDA/OpenGL
+
+---
+
+![sc1](.github/screenshot.png) | ![sc2](.github/screenshot2.png)
+|--|--|
+
+
+## Architecture Diagram
+![diagram](.github/diagram.drawio.png)
