@@ -10,12 +10,17 @@
 namespace cuwfrt
 {
 
-__KERNEL__ void ResetCounts(int32* next_ray_count, int32* closest_ray_count, int32* miss_ray_count, int32* shadow_ray_count)
+__KERNEL__ void ResetCounts(int32* next_ray_count, WavefrontRayQueue closest_rays, int32* miss_ray_count, int32* shadow_ray_count)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0)
     {
         *next_ray_count = 0;
-        *closest_ray_count = 0;
+
+        for (int32 i = 0; i < Materials::count; ++i)
+        {
+            *closest_rays.ray_counts[i] = 0;
+        }
+
         *miss_ray_count = 0;
         *shadow_ray_count = 0;
     }
@@ -56,8 +61,7 @@ __KERNEL__ void GeneratePrimaryRays(
 __KERNEL__ void Extend(
     WavefrontRay* __restrict__ active_rays,
     int32 active_ray_count,
-    WavefrontRay* __restrict__ closest_rays,
-    int32* closest_ray_count,
+    WavefrontRayQueue ray_queue,
     WavefrontMissRay* __restrict__ miss_rays,
     int32* miss_ray_count,
     GPUScene scene
@@ -71,8 +75,10 @@ __KERNEL__ void Extend(
     bool found_intersection = Intersect(&wf_ray.isect, &scene, wf_ray.ray, Ray::epsilon, infinity);
     if (found_intersection)
     {
-        int32 next_index = atomicAdd(closest_ray_count, 1);
-        closest_rays[next_index] = active_rays[index];
+        MaterialIndex mi = scene.material_indices[wf_ray.isect.prim];
+        int32 ti = mi.type_index;
+        int32 next_index = atomicAdd(ray_queue.ray_counts[ti], 1);
+        ray_queue.rays[ti][next_index] = active_rays[index];
     }
     else
     {
@@ -99,8 +105,9 @@ __KERNEL__ void Miss(
     }
 }
 
-// Shade hit points, generate next bounce rays and shadow rays
-__KERNEL__ void Shade(
+// Intersects closest, generate next bounce rays and shadow rays
+template <typename MaterialType>
+__KERNEL__ void Closest(
     WavefrontRay* __restrict__ closest_rays,
     int32 closest_ray_count,
     WavefrontRay* __restrict__ next_rays,
@@ -130,11 +137,11 @@ __KERNEL__ void Shade(
 
     Vec3 wo = Normalize(-ray.d);
 
-    Material* mat = GetMaterial(&scene, isect.prim);
+    MaterialType* mat = GetMaterial(&scene, isect.prim)->Cast<MaterialType>();
 
     if (Vec3 Le = mat->Le(isect, wo); Le != Vec3(0))
     {
-        bool is_area_light = mat->Is<DiffuseLightMaterial>();
+        bool is_area_light = mat->type_index == Material::TypeIndexOf<DiffuseLightMaterial>();
         if (bounce == 0 || specular_bounce || !is_area_light)
         {
             AtomicAdd(&L, beta * Le);

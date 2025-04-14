@@ -103,6 +103,12 @@ class DynamicDispatcher<TypePack<Types...>>
 public:
     const int32 type_index;
 
+    DynamicDispatcher(int32 type_index)
+        : type_index{ type_index }
+    {
+        WakAssert(size_t(type_index) < sizeof...(Types));
+    }
+
     template <typename T>
     __CPU_GPU__ bool Is() const
     {
@@ -161,13 +167,6 @@ public:
         {
             return detail::IndexOf<Type, Types...>::value;
         }
-    }
-
-protected:
-    DynamicDispatcher(int32 type_index)
-        : type_index{ type_index }
-    {
-        WakAssert(size_t(type_index) < sizeof...(Types));
     }
 };
 

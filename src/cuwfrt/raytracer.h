@@ -64,7 +64,8 @@ private:
     const Camera* camera;
     const Options* options;
 
-    cudaStream_t streams[2];
+    std::array<cudaStream_t, 2> streams;
+    std::array<cudaStream_t, Materials::count> ray_queue_streams;
     GPUResources gpu_res;
     WavefrontResources wf;
 

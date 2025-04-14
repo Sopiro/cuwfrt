@@ -37,6 +37,12 @@ struct WavefrontShadowRay
     int32 pixel_index;
 };
 
+struct WavefrontRayQueue
+{
+    WavefrontRay* rays[Materials::count];
+    int32* ray_counts[Materials::count];
+};
+
 struct WavefrontResources
 {
     int32 ray_capacity;
@@ -44,14 +50,14 @@ struct WavefrontResources
     WavefrontRay* rays_active;
     WavefrontRay* rays_next;
 
-    WavefrontRay* rays_closest;
+    WavefrontRayQueue rays_closest;
+
     WavefrontMissRay* miss_rays;
     WavefrontShadowRay* shadow_rays;
 
     int32* active_ray_count;
     int32* next_ray_count;
 
-    int32* closest_ray_count;
     int32* miss_ray_count;
     int32* shadow_ray_count;
 
