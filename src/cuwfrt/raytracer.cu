@@ -164,31 +164,29 @@ void RayTracer::RayTraceWavefront(int32 t)
     {
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        GeneratePrimaryRays<<<blocks, threads>>>(d_sample_buffer, wf.rays_active, res, *camera, time);
+        GeneratePrimaryRays<<<blocks, threads>>>(d_sample_buffer, wf.active.rays, res, *camera, time);
         cudaCheckLastError();
     }
 
     int32 bounce = 0;
     while (true)
     {
-        ResetCounts<<<1, 1>>>(wf.next_ray_count, wf.rays_closest, wf.miss_ray_count, wf.shadow_ray_count);
+        ResetCounts<<<1, 1>>>(wf.next.count, wf.closest, wf.miss.count, wf.shadow.count);
         cudaCheckLastError();
 
         // Extend rays
         {
             const int32 threads = 128;
             int32 blocks = (num_active_rays + threads - 1) / threads;
-            Extend<<<blocks, threads>>>(
-                wf.rays_active, num_active_rays, wf.rays_closest, wf.miss_rays, wf.miss_ray_count, gpu_res.scene
-            );
+            Extend<<<blocks, threads>>>(wf.active.rays, num_active_rays, wf.closest, wf.miss, gpu_res.scene);
             cudaCheckLastError();
         }
 
         // Get counts of newly generated rays (closest hit and miss)
-        cudaCheck(cudaMemcpy(&num_miss_rays, wf.miss_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+        cudaCheck(cudaMemcpy(&num_miss_rays, wf.miss.count, sizeof(int32), cudaMemcpyDeviceToHost));
         for (int32 i = 0; i < Materials::count; ++i)
         {
-            cudaCheck(cudaMemcpy(&num_closest_rays[i], wf.rays_closest.ray_counts[i], sizeof(int32), cudaMemcpyDeviceToHost));
+            cudaCheck(cudaMemcpy(&num_closest_rays[i], wf.closest.counts[i], sizeof(int32), cudaMemcpyDeviceToHost));
         }
 
         // Handle misses
@@ -196,7 +194,7 @@ void RayTracer::RayTraceWavefront(int32 t)
         {
             const int32 threads = 128;
             int32 blocks = (num_miss_rays + threads - 1) / threads;
-            Miss<<<blocks, threads, 0, streams[0]>>>(wf.miss_rays, num_miss_rays, d_sample_buffer, *options);
+            Miss<<<blocks, threads, 0, streams[0]>>>(wf.miss.rays, num_miss_rays, d_sample_buffer, *options);
             cudaCheckLastError();
         }
 
@@ -211,8 +209,8 @@ void RayTracer::RayTraceWavefront(int32 t)
                 DynamicDispatcher<Materials>(i).Dispatch([&](auto* m) {
                     using MaterialType = std::remove_pointer_t<decltype(m)>;
                     Closest<MaterialType><<<blocks, threads, 0, ray_queue_streams[i]>>>(
-                        wf.rays_closest.rays[i], num_closest_rays[i], wf.rays_next, wf.next_ray_count, wf.shadow_rays,
-                        wf.shadow_ray_count, d_sample_buffer, gpu_res.scene, *options, bounce, time
+                        wf.closest.rays[i], num_closest_rays[i], wf.next, wf.shadow, d_sample_buffer, gpu_res.scene, *options,
+                        bounce, time
                     );
                     cudaCheckLastError();
                 });
@@ -230,21 +228,21 @@ void RayTracer::RayTraceWavefront(int32 t)
         }
 
         // Get counts of newly generated rays (shadow and next bounce)
-        cudaCheck(cudaMemcpyAsync(&num_shadow_rays, wf.shadow_ray_count, sizeof(int32), cudaMemcpyDeviceToHost, streams[1]));
+        cudaCheck(cudaMemcpyAsync(&num_shadow_rays, wf.shadow.count, sizeof(int32), cudaMemcpyDeviceToHost, streams[1]));
 
         // Test shadow ray and incorporate direct light
         if (num_shadow_rays > 0)
         {
             const int32 threads = 128;
             int32 blocks = (num_shadow_rays + threads - 1) / threads;
-            Connect<<<blocks, threads, 0, streams[1]>>>(wf.shadow_rays, num_shadow_rays, d_sample_buffer, gpu_res.scene);
+            Connect<<<blocks, threads, 0, streams[1]>>>(wf.shadow.rays, num_shadow_rays, d_sample_buffer, gpu_res.scene);
             cudaCheckLastError();
         }
 
-        cudaCheck(cudaMemcpyAsync(&num_next_rays, wf.next_ray_count, sizeof(int32), cudaMemcpyDeviceToHost));
+        cudaCheck(cudaMemcpyAsync(&num_next_rays, wf.next.count, sizeof(int32), cudaMemcpyDeviceToHost));
 
         // Prepare for next bounce
-        std::swap(wf.rays_active, wf.rays_next);
+        std::swap(wf.active, wf.next);
         num_active_rays = num_next_rays;
 
         if (num_active_rays <= 0)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "cuda_error.cuh"
 #include "cuwfrt/geometry/intersection.h"
 
 namespace cuwfrt
@@ -37,29 +38,79 @@ struct WavefrontShadowRay
     int32 pixel_index;
 };
 
-struct WavefrontRayQueue
+template <typename T>
+struct RayQueue
 {
-    WavefrontRay* rays[Materials::count];
-    int32* ray_counts[Materials::count];
+    T* rays;
+    int32* count;
+
+    void Init(int32 capacity)
+    {
+        cudaCheck(cudaMalloc(&rays, capacity * sizeof(T)));
+        cudaCheck(cudaMalloc(&count, sizeof(int32)));
+    }
+
+    void Free()
+    {
+        cudaCheck(cudaFree(rays));
+        cudaCheck(cudaFree(count));
+    }
+
+    void Resize(int32 capacity)
+    {
+        cudaCheck(cudaFree(rays));
+        cudaCheck(cudaMalloc(&rays, capacity * sizeof(T)));
+    }
+};
+
+template <typename T, int32 size>
+struct RayQueues
+{
+    T* rays[size];
+    int32* counts[size];
+
+    void Init(int32 capacity)
+    {
+        for (int32 i = 0; i < size; ++i)
+        {
+            cudaCheck(cudaMalloc(&rays[i], capacity * sizeof(T)));
+            cudaCheck(cudaMalloc(&counts[i], sizeof(int32)));
+        }
+    }
+
+    void Free()
+    {
+        for (int32 i = 0; i < size; ++i)
+        {
+            cudaCheck(cudaFree(rays[i]));
+            cudaCheck(cudaFree(counts[i]));
+        }
+    }
+
+    void Resize(int32 capacity)
+    {
+        for (int32 i = 0; i < size; ++i)
+        {
+            cudaCheck(cudaFree(rays[i]));
+        }
+
+        for (int32 i = 0; i < size; ++i)
+        {
+            cudaCheck(cudaMalloc(&rays[i], capacity * sizeof(T)));
+        }
+    }
 };
 
 struct WavefrontResources
 {
     int32 ray_capacity;
 
-    WavefrontRay* rays_active;
-    WavefrontRay* rays_next;
+    RayQueue<WavefrontRay> active;
+    RayQueue<WavefrontRay> next;
+    RayQueues<WavefrontRay, Materials::count> closest;
 
-    WavefrontRayQueue rays_closest;
-
-    WavefrontMissRay* miss_rays;
-    WavefrontShadowRay* shadow_rays;
-
-    int32* active_ray_count;
-    int32* next_ray_count;
-
-    int32* miss_ray_count;
-    int32* shadow_ray_count;
+    RayQueue<WavefrontMissRay> miss;
+    RayQueue<WavefrontShadowRay> shadow;
 
     void Init(Point2i res);
     void Free();
