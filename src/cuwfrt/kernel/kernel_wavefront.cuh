@@ -11,7 +11,7 @@ namespace cuwfrt
 {
 
 __KERNEL__ void ResetCounts(
-    int32* next_ray_count, RayQueues<WavefrontRay, Materials::count> closest_rays, int32* miss_ray_count, int32* shadow_ray_count
+    int32* next_ray_count, RayQueues<WavefrontRay, Materials::count> queue_closest, int32* miss_ray_count, int32* shadow_ray_count
 )
 {
     if (threadIdx.x == 0 && blockIdx.x == 0)
@@ -20,7 +20,7 @@ __KERNEL__ void ResetCounts(
 
         for (int32 i = 0; i < Materials::count; ++i)
         {
-            *closest_rays.counts[i] = 0;
+            *queue_closest.counts[i] = 0;
         }
 
         *miss_ray_count = 0;
@@ -30,7 +30,7 @@ __KERNEL__ void ResetCounts(
 
 // Generate primary rays for each pixel
 __KERNEL__ void GeneratePrimaryRays(
-    Vec4* __restrict__ sample_buffer, WavefrontRay* __restrict__ active_rays, Point2i res, Camera camera, int32 time
+    WavefrontRay* __restrict__ active_rays, Vec4* __restrict__ sample_buffer, Point2i res, Camera camera, int32 time
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -61,35 +61,37 @@ __KERNEL__ void GeneratePrimaryRays(
 
 // Trace rays and find closest intersection
 __KERNEL__ void Extend(
-    const WavefrontRay* __restrict__ active_rays,
+    WavefrontRay* __restrict__ active_rays,
     int32 active_ray_count,
-    RayQueues<WavefrontRay, Materials::count> closest,
-    RayQueue<WavefrontMissRay> miss,
+    RayQueues<WavefrontRay, Materials::count> q_closest,
+    RayQueue<WavefrontMissRay> q_miss,
     GPUScene scene
 )
 {
     int32 index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= active_ray_count) return;
 
-    const WavefrontRay& wf_ray = active_rays[index];
-    Intersection isect;
+    WavefrontRay& wf_ray = active_rays[index];
 
-    bool found_intersection = Intersect(&isect, &scene, wf_ray.ray, Ray::epsilon, infinity);
+    bool found_intersection = Intersect(&wf_ray.isect, &scene, wf_ray.ray, Ray::epsilon, infinity);
     if (found_intersection)
     {
-        MaterialIndex mi = scene.material_indices[isect.prim];
+        MaterialIndex mi = scene.material_indices[wf_ray.isect.prim];
         const int32 ti = mi.type_index;
 
-        int32 next_index = atomicAdd(closest.counts[ti], 1);
-        closest.rays[ti][next_index] = active_rays[index];
-        closest.rays[ti][next_index].isect = isect;
+        int32 next_index = atomicAdd(q_closest.counts[ti], 1);
+        WavefrontRay* next_ray = &q_closest.rays[ti][next_index];
+
+        *next_ray = wf_ray;
     }
     else
     {
-        int32 next_index = atomicAdd(miss.count, 1);
-        miss.rays[next_index].pixel_index = wf_ray.pixel_index;
-        miss.rays[next_index].d = wf_ray.ray.d;
-        miss.rays[next_index].beta = wf_ray.beta;
+        int32 next_index = atomicAdd(q_miss.count, 1);
+        WavefrontMissRay* miss_ray = &q_miss.rays[next_index];
+
+        miss_ray->pixel_index = wf_ray.pixel_index;
+        miss_ray->d = wf_ray.ray.d;
+        miss_ray->beta = wf_ray.beta;
     }
 }
 
@@ -114,8 +116,8 @@ template <typename MaterialType>
 __KERNEL__ void Closest(
     WavefrontRay* __restrict__ closest_rays,
     int32 closest_ray_count,
-    RayQueue<WavefrontRay> next,
-    RayQueue<WavefrontShadowRay> shadow,
+    RayQueue<WavefrontRay> q_next,
+    RayQueue<WavefrontShadowRay> q_shadow,
     Vec4* __restrict__ sample_buffer,
     GPUScene scene,
     Options options,
@@ -183,11 +185,13 @@ __KERNEL__ void Closest(
 
             Float mis_weight = PowerHeuristic(1, light_pdf, 1, bsdf_pdf);
 
-            int32 shadow_ray_index = atomicAdd(shadow.count, 1);
-            shadow.rays[shadow_ray_index].ray = Ray(isect.point, wi);
-            shadow.rays[shadow_ray_index].visibility = visibility;
-            shadow.rays[shadow_ray_index].Li = beta * mis_weight * Li * f_cos / light_pdf;
-            shadow.rays[shadow_ray_index].pixel_index = pixel_index;
+            int32 shadow_ray_index = atomicAdd(q_shadow.count, 1);
+            WavefrontShadowRay* shadow_ray = &q_shadow.rays[shadow_ray_index];
+
+            shadow_ray->ray = Ray(isect.point, wi);
+            shadow_ray->visibility = visibility;
+            shadow_ray->Li = beta * mis_weight * Li * f_cos / light_pdf;
+            shadow_ray->pixel_index = pixel_index;
         }
     }
 
@@ -219,8 +223,8 @@ __KERNEL__ void Closest(
     ray.o = isect.point;
     ray.d = ss.wi;
 
-    int32 new_index = atomicAdd(next.count, 1);
-    next.rays[new_index] = wf_ray;
+    int32 new_index = atomicAdd(q_next.count, 1);
+    q_next.rays[new_index] = wf_ray;
 }
 
 // Process shadow rays, add contribution if unoccluded
@@ -231,7 +235,7 @@ __KERNEL__ void Connect(
     int32 index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= shadow_ray_count) return;
 
-    WavefrontShadowRay& wf_shadow_ray = shadow_rays[index];
+    const WavefrontShadowRay& wf_shadow_ray = shadow_rays[index];
 
     if (!IntersectAny(&scene, wf_shadow_ray.ray, Ray::epsilon, wf_shadow_ray.visibility))
     {

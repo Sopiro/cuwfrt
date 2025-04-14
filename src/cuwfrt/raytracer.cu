@@ -164,7 +164,7 @@ void RayTracer::RayTraceWavefront(int32 t)
     {
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        GeneratePrimaryRays<<<blocks, threads>>>(d_sample_buffer, wf.active.rays, res, *camera, time);
+        GeneratePrimaryRays<<<blocks, threads>>>(wf.active.rays, d_sample_buffer, res, *camera, time);
         cudaCheckLastError();
     }
 

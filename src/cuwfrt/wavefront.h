@@ -112,9 +112,36 @@ struct WavefrontResources
     RayQueue<WavefrontMissRay> miss;
     RayQueue<WavefrontShadowRay> shadow;
 
-    void Init(Point2i res);
-    void Free();
-    void Resize(Point2i res);
+    void Init(Point2i res)
+    {
+        ray_capacity = res.x * res.y;
+
+        active.Init(ray_capacity);
+        next.Init(ray_capacity);
+        closest.Init(ray_capacity);
+        miss.Init(ray_capacity);
+        shadow.Init(ray_capacity);
+    }
+
+    void Free()
+    {
+        active.Free();
+        next.Free();
+        closest.Free();
+        miss.Free();
+        shadow.Free();
+    }
+
+    void Resize(Point2i res)
+    {
+        ray_capacity = res.x * res.y;
+
+        active.Resize(ray_capacity);
+        next.Resize(ray_capacity);
+        closest.Resize(ray_capacity);
+        miss.Resize(ray_capacity);
+        shadow.Resize(ray_capacity);
+    }
 };
 
 } // namespace cuwfrt
