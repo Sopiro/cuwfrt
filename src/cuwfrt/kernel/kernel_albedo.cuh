@@ -24,6 +24,8 @@ __KERNEL__ void RaytraceAlbedo(
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     if (x >= res.x || y >= res.y) return;
 
+    const int32 index = y * res.x + x;
+
     RNG rng(Hash(x, y, time));
 
     // Generate primary ray
@@ -35,17 +37,22 @@ __KERNEL__ void RaytraceAlbedo(
     Intersection isect;
     bool found_intersection = Intersect(&isect, &scene, ray, Ray::epsilon, infinity);
 
-    int32 index = y * res.x + x;
     if (found_intersection)
     {
         Material* m = GetMaterial(&scene, isect.prim);
-
-        frame_buffer[index] = Vec4(m->Albedo(&scene, isect, -ray.d), 1);
+        sample_buffer[index] *= time;
+        sample_buffer[index] += Vec4(m->Albedo(&scene, isect, -ray.d), 1);
+        sample_buffer[index] /= time + 1.0f;
     }
     else
     {
-        frame_buffer[index] = Vec4(0, 0, 0, 1);
+        sample_buffer[index] = Vec4(0);
     }
+
+    frame_buffer[index].x = std::pow(sample_buffer[index].x, 1 / 2.2f);
+    frame_buffer[index].y = std::pow(sample_buffer[index].y, 1 / 2.2f);
+    frame_buffer[index].z = std::pow(sample_buffer[index].z, 1 / 2.2f);
+    frame_buffer[index].w = 1.0f;
 }
 
 } // namespace cuwfrt

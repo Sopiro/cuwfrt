@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "cuda_error.cuh"
+#include "cuda_error.h"
 #include "cuwfrt/geometry/intersection.h"
 
 namespace cuwfrt

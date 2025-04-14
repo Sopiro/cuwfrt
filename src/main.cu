@@ -2,12 +2,12 @@
 
 #include "cuwfrt/raytracer.h"
 
-#include "cuwfrt/scene/builder.cuh"
+#include "cuwfrt/scene/builder.h"
 #include "cuwfrt/util/parallel.h"
 
-#include "cuwfrt/loader/loader.cuh"
+#include "cuwfrt/loader/loader.h"
 
-#include "cuwfrt/cuda_error.cuh"
+#include "cuwfrt/cuda_error.h"
 
 #include <chrono>
 

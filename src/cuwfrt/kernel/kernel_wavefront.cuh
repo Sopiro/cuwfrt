@@ -46,7 +46,6 @@ __KERNEL__ void GeneratePrimaryRays(
 
     // Generate primary ray
     camera.SampleRay(&wf_ray.ray, { x, y }, { rng.NextFloat(), rng.NextFloat() }, { rng.NextFloat(), rng.NextFloat() });
-    wf_ray.isect = { 0 };
 
     wf_ray.rng = rng;
     wf_ray.beta = Vec3(1);

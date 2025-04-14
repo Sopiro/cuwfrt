@@ -1,4 +1,4 @@
-#include "loader.cuh"
+#include "loader.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 // #define TINYOBJLOADER_USE_MAPBOX_EARCUT

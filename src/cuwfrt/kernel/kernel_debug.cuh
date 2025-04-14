@@ -41,6 +41,8 @@ __KERNEL__ void RenderNormal(
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     if (x >= res.x || y >= res.y) return;
 
+    const int32 index = y * res.x + x;
+
     RNG rng(Hash(x, y, time));
 
     // Generate primary ray
@@ -52,15 +54,21 @@ __KERNEL__ void RenderNormal(
     Intersection isect;
     bool found_intersection = Intersect(&isect, &scene, ray, Ray::epsilon, infinity);
 
-    int32 index = y * res.x + x;
     if (found_intersection)
     {
-        frame_buffer[index] = Vec4((isect.shading_normal + 1) * 0.5, 1);
+        sample_buffer[index] *= time;
+        sample_buffer[index] += Vec4((isect.shading_normal + 1) * 0.5, 1);
+        sample_buffer[index] /= time + 1.0f;
     }
     else
     {
-        frame_buffer[index] = Vec4(0, 0, 0, 1);
+        sample_buffer[index] = Vec4(0, 0, 0, 1);
     }
+
+    frame_buffer[index].x = sample_buffer[index].x;
+    frame_buffer[index].y = sample_buffer[index].y;
+    frame_buffer[index].z = sample_buffer[index].z;
+    frame_buffer[index].w = 1.0f;
 }
 
 } // namespace cuwfrt

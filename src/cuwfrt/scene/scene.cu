@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scene.cuh"
+#include "scene.h"
 
 #include "cuwfrt/geometry/primitive.h"
 #include "cuwfrt/geometry/triangle_mesh.h"

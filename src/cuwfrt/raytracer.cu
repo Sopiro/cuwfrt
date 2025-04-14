@@ -1,4 +1,4 @@
-#include "cuda_error.cuh"
+#include "cuda_error.h"
 #include "raytracer.h"
 
 #include <cuda_gl_interop.h>
