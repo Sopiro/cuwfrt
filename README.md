@@ -17,6 +17,14 @@ Raytracer written in CUDA
 ![sc1](.github/screenshot.png) | ![sc2](.github/screenshot2.png)
 |--|--|
 
+![sc3](.github/screenshot3.png) | ![sc4](.github/screenshot4.png)
+|--|--|
 
 ## Architecture Diagram
 ![diagram](.github/diagram.drawio.png)
+
+## Building
+- Install [CMake](https://cmake.org/install/) and [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit-archive)
+- Ensure CMake is in the system PATH
+- Clone the repository git clone https://github.com/Sopiro/cuwfrt.git
+- Run `build.bat`
