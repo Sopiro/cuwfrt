@@ -155,21 +155,17 @@ static void BuildScene()
     // MaterialIndex white = scene.AddMaterial<DiffuseMaterial>(Vec3{ .73f, .73f, .73f });
     // SetLoaderFallbackMaterial(white);
 
-    {
-        // TextureIndex basecolor = scene.AddTexture({ .is_constant = true, .color = { 1.0f, 0.766f, 0.336f } });
-        // Float metallic = 1;
-        // Float roughness = 0.2f;
-        // TextureIndex arm = scene.AddTexture({ .is_constant = true, .color = { 0, roughness, metallic } });
-        // MaterialIndex gold = scene.AddMaterial<PBRMaterial>(basecolor, arm, arm);
-        // SetLoaderFallbackMaterial(gold);
-    }
+    // TextureIndex basecolor = scene.AddTexture({ .is_constant = true, .color = { 1.0f, 0.766f, 0.336f } });
+    // Float metallic = 1;
+    // Float roughness = 0.2f;
+    // TextureIndex arm = scene.AddTexture({ .is_constant = true, .color = { 0, roughness, metallic } });
+    // MaterialIndex gold = scene.AddMaterial<PBRMaterial>(basecolor, arm, arm);
+    // SetLoaderFallbackMaterial(gold);
 
     MaterialIndex glass = scene.AddMaterial<DielectricMaterial>(1.5f, Vec3(1.0f));
     SetLoaderFallbackMaterial(glass);
 
-    LoadModel(
-        scene, "Z:/dev/cpp_workspace/Bulbit/res/stanford/lucy.obj", Transform(Vec3(0.66f, 0.28f, -0.33f), identity, Vec3(0.5f))
-    );
+    LoadModel(scene, "res/lucy.obj", Transform(Vec3(0.66f, 0.28f, -0.33f), identity, Vec3(0.5f)));
 
     // LoadModel(scene, "Z:/dev/cpp_workspace/Bulbit/res/sponza/glTF/Sponza.gltf", Transform(Vec3(0, 0, 0), identity,
     // Vec3(0.01f)));
