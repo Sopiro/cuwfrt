@@ -14,11 +14,10 @@
 namespace cuwfrt
 {
 
-const int32 RayTracer::num_kernels = 7;
-const char* RayTracer::kernel_name[] = { "Gradient", "Normal", "AO", "Albedo", "Pathtrace Naive", "Pathtrace NEE", "Wavefront" };
+const int32 RayTracer::num_kernels = 6;
+const char* RayTracer::kernel_name[] = { "Normal", "AO", "Albedo", "Pathtrace Naive", "Pathtrace NEE", "Wavefront" };
 
-static Kernel* kernels[RayTracer::num_kernels] = { RenderGradient, RenderNormal,   RaytraceAO,
-                                                   RaytraceAlbedo, PathTraceNaive, PathTraceNEE };
+static Kernel* kernels[RayTracer::num_kernels] = { RenderNormal, RaytraceAO, RaytraceAlbedo, PathTraceNaive, PathTraceNEE };
 
 RayTracer::RayTracer(Window* window, const Scene* scene, const Camera* camera, const Options* options)
     : window{ window }
@@ -135,9 +134,8 @@ void RayTracer::Resize(int32 width, int32 height)
     wf.Resize(res);
 }
 
-void RayTracer::RayTrace(int32 kernel_index, int32 t)
+void RayTracer::RayTrace(int32 kernel_index, int32 time)
 {
-    time = t;
     kernel_index = (kernel_index + num_kernels) % num_kernels;
 
     // Render to the PBO using CUDA
@@ -150,13 +148,11 @@ void RayTracer::RayTrace(int32 kernel_index, int32 t)
     cudaCheck(cudaDeviceSynchronize());
 }
 
-void RayTracer::RayTraceWavefront(int32 t)
+void RayTracer::RayTraceWavefront(int32 time)
 {
-    time = t;
-
     int32 num_active_rays = wf.ray_capacity;
     int32 num_next_rays = 0;
-    int32 num_closest_rays[Materials::count] = { 0 };
+    int32 num_closest_rays[wf.closest_queue_count] = { 0 };
     int32 num_miss_rays = 0;
     int32 num_shadow_rays = 0;
 
@@ -174,32 +170,32 @@ void RayTracer::RayTraceWavefront(int32 t)
         ResetCounts<<<1, 1>>>(wf.next.count, wf.closest, wf.miss.count, wf.shadow.count);
         cudaCheckLastError();
 
-        // Extend rays
+        // Trace rays
         {
             const int32 threads = 128;
             int32 blocks = (num_active_rays + threads - 1) / threads;
-            Extend<<<blocks, threads>>>(wf.active.rays, num_active_rays, wf.closest, wf.miss, gpu_res.scene);
+            TraceRay<<<blocks, threads>>>(wf.active.rays, num_active_rays, wf.closest, wf.miss, gpu_res.scene);
             cudaCheckLastError();
         }
 
         // Get counts of newly generated rays (closest hit and miss)
         cudaCheck(cudaMemcpy(&num_miss_rays, wf.miss.count, sizeof(int32), cudaMemcpyDeviceToHost));
-        for (int32 i = 0; i < Materials::count; ++i)
+        for (int32 i = 0; i < wf.closest_queue_count; ++i)
         {
             cudaCheck(cudaMemcpy(&num_closest_rays[i], wf.closest.counts[i], sizeof(int32), cudaMemcpyDeviceToHost));
         }
 
         // Handle misses
-        if (num_miss_rays > 0)
+        if (options->render_sky && num_miss_rays > 0)
         {
             const int32 threads = 128;
             int32 blocks = (num_miss_rays + threads - 1) / threads;
-            Miss<<<blocks, threads, 0, streams[0]>>>(wf.miss.rays, num_miss_rays, d_sample_buffer, *options);
+            Miss<<<blocks, threads, 0, streams[0]>>>(wf.miss.rays, num_miss_rays, d_sample_buffer);
             cudaCheckLastError();
         }
 
         // Intersects closest
-        for (int32 i = 0; i < Materials::count; ++i)
+        for (int32 i = 0; i < wf.closest_queue_count; ++i)
         {
             if (num_closest_rays[i] > 0)
             {
@@ -209,8 +205,7 @@ void RayTracer::RayTraceWavefront(int32 t)
                 DynamicDispatcher<Materials>(i).Dispatch([&](auto* m) {
                     using MaterialType = std::remove_pointer_t<decltype(m)>;
                     Closest<MaterialType><<<blocks, threads, 0, ray_queue_streams[i]>>>(
-                        wf.closest.rays[i], num_closest_rays[i], wf.next, wf.shadow, d_sample_buffer, gpu_res.scene, *options,
-                        bounce, time
+                        wf.closest.rays[i], num_closest_rays[i], wf.next, wf.shadow, d_sample_buffer, gpu_res.scene, bounce
                     );
                     cudaCheckLastError();
                 });
@@ -222,7 +217,7 @@ void RayTracer::RayTraceWavefront(int32 t)
             break;
         }
 
-        for (int32 i = 0; i < Materials::count; ++i)
+        for (int32 i = 0; i < wf.closest_queue_count; ++i)
         {
             cudaCheck(cudaStreamSynchronize(ray_queue_streams[i]));
         }
@@ -235,7 +230,7 @@ void RayTracer::RayTraceWavefront(int32 t)
         {
             const int32 threads = 128;
             int32 blocks = (num_shadow_rays + threads - 1) / threads;
-            Connect<<<blocks, threads, 0, streams[1]>>>(wf.shadow.rays, num_shadow_rays, d_sample_buffer, gpu_res.scene);
+            TraceShadowRay<<<blocks, threads, 0, streams[1]>>>(wf.shadow.rays, num_shadow_rays, d_sample_buffer, gpu_res.scene);
             cudaCheckLastError();
         }
 

@@ -19,6 +19,11 @@ Texture::Texture(const TextureDesc& td)
     else
     {
         image = alzartak::ReadImage4(td.filename, td.non_color);
+        if (!image)
+        {
+            image = Image4(1, 1);
+            image[0] = Vec4(1, 0, 1, 1);
+        }
     }
 
     // Create CUDA array and texture objext

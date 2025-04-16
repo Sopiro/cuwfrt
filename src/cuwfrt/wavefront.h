@@ -103,11 +103,13 @@ struct RayQueues
 
 struct WavefrontResources
 {
+    static constexpr inline int32 closest_queue_count = Materials::count;
+
     int32 ray_capacity;
 
     RayQueue<WavefrontRay> active;
     RayQueue<WavefrontRay> next;
-    RayQueues<WavefrontRay, Materials::count> closest;
+    RayQueues<WavefrontRay, closest_queue_count> closest;
 
     RayQueue<WavefrontMissRay> miss;
     RayQueue<WavefrontShadowRay> shadow;

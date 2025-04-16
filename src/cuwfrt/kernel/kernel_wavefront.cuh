@@ -59,7 +59,7 @@ __KERNEL__ void GeneratePrimaryRays(
 }
 
 // Trace rays and find closest intersection
-__KERNEL__ void Extend(
+__KERNEL__ void TraceRay(
     WavefrontRay* __restrict__ active_rays,
     int32 active_ray_count,
     RayQueues<WavefrontRay, Materials::count> q_closest,
@@ -94,20 +94,15 @@ __KERNEL__ void Extend(
     }
 }
 
-__KERNEL__ void Miss(
-    WavefrontMissRay* __restrict__ miss_rays, int32 miss_ray_count, Vec4* __restrict__ sample_buffer, Options options
-)
+__KERNEL__ void Miss(WavefrontMissRay* __restrict__ miss_rays, int32 miss_ray_count, Vec4* __restrict__ sample_buffer)
 {
     int32 index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= miss_ray_count) return;
 
     WavefrontMissRay& miss_ray = miss_rays[index];
 
-    if (options.render_sky)
-    {
-        Vec4& L = sample_buffer[miss_ray.pixel_index];
-        AtomicAdd(&L, miss_ray.beta * SkyColor(miss_ray.d));
-    }
+    Vec4& L = sample_buffer[miss_ray.pixel_index];
+    AtomicAdd(&L, miss_ray.beta * SkyColor(miss_ray.d));
 }
 
 // Intersects closest, generate next bounce rays and shadow rays
@@ -119,9 +114,7 @@ __KERNEL__ void Closest(
     RayQueue<WavefrontShadowRay> q_shadow,
     Vec4* __restrict__ sample_buffer,
     GPUScene scene,
-    Options options,
-    int32 bounce,
-    int32 time
+    int32 bounce
 )
 {
     int32 index = threadIdx.x + blockIdx.x * blockDim.x;
@@ -226,8 +219,8 @@ __KERNEL__ void Closest(
     q_next.rays[new_index] = wf_ray;
 }
 
-// Process shadow rays, add contribution if unoccluded
-__KERNEL__ void Connect(
+// Trace shadow rays, add contribution if unoccluded
+__KERNEL__ void TraceShadowRay(
     WavefrontShadowRay* __restrict__ shadow_rays, int32 shadow_ray_count, Vec4* __restrict__ sample_buffer, GPUScene scene
 )
 {

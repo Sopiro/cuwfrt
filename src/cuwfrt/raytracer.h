@@ -68,8 +68,6 @@ private:
     std::array<cudaStream_t, Materials::count> ray_queue_streams;
     GPUResources gpu_res;
     WavefrontResources wf;
-
-    int32 time;
 };
 
 } // namespace cuwfrt
