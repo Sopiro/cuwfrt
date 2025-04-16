@@ -80,7 +80,7 @@ static void Render()
     ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
     if (ImGui::Begin("cuwfrt", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::Text("%d fps %.6fms", int32(io.Framerate), io.DeltaTime);
+        ImGui::Text("%d fps %.4fms", int32(io.Framerate), io.DeltaTime * 1000);
         if (time < max_samples)
         {
             ImGui::Text("%d samples", std::min(time + 1, max_samples));
