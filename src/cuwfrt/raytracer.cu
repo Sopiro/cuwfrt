@@ -160,7 +160,7 @@ void RayTracer::RayTraceWavefront(int32 time)
     {
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        GeneratePrimaryRays<<<blocks, threads>>>(wf.active.rays, d_sample_buffer, res, *camera, time);
+        GeneratePrimaryRays<<<blocks, threads>>>(wf.active.rays, d_sample_buffer, wf.g_buffer, res, *camera, time);
         cudaCheckLastError();
     }
 
@@ -205,7 +205,8 @@ void RayTracer::RayTraceWavefront(int32 time)
                 DynamicDispatcher<Materials>(i).Dispatch([&](auto* m) {
                     using MaterialType = std::remove_pointer_t<decltype(m)>;
                     Closest<MaterialType><<<blocks, threads, 0, ray_queue_streams[i]>>>(
-                        wf.closest.rays[i], num_closest_rays[i], wf.next, wf.shadow, d_sample_buffer, gpu_res.scene, bounce
+                        wf.closest.rays[i], num_closest_rays[i], wf.next, wf.shadow, d_sample_buffer, gpu_res.scene, wf.g_buffer,
+                        bounce
                     );
                     cudaCheckLastError();
                 });
@@ -250,7 +251,7 @@ void RayTracer::RayTraceWavefront(int32 time)
     {
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        Finalize<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, time);
+        Finalize<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, wf.g_buffer, res, time);
         cudaCheckLastError();
         cudaCheck(cudaDeviceSynchronize());
     }

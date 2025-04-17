@@ -101,6 +101,37 @@ struct RayQueues
     }
 };
 
+struct GBuffer
+{
+    Vec3* albedo;
+    Vec3* normal;
+    Float* depth;
+
+    void Init(int32 capacity)
+    {
+        cudaCheck(cudaMalloc(&albedo, capacity * sizeof(Vec3)));
+        cudaCheck(cudaMalloc(&normal, capacity * sizeof(Vec3)));
+        cudaCheck(cudaMalloc(&depth, capacity * sizeof(Float)));
+    }
+
+    void Free()
+    {
+        cudaCheck(cudaFree(albedo));
+        cudaCheck(cudaFree(normal));
+        cudaCheck(cudaFree(depth));
+    }
+
+    void Resize(int32 capacity)
+    {
+        cudaCheck(cudaFree(albedo));
+        cudaCheck(cudaFree(normal));
+        cudaCheck(cudaFree(depth));
+        cudaCheck(cudaMalloc(&albedo, capacity * sizeof(Vec3)));
+        cudaCheck(cudaMalloc(&normal, capacity * sizeof(Vec3)));
+        cudaCheck(cudaMalloc(&depth, capacity * sizeof(Float)));
+    }
+};
+
 struct WavefrontResources
 {
     static constexpr inline int32 closest_queue_count = Materials::count;
@@ -114,6 +145,8 @@ struct WavefrontResources
     RayQueue<WavefrontMissRay> miss;
     RayQueue<WavefrontShadowRay> shadow;
 
+    GBuffer g_buffer;
+
     void Init(Point2i res)
     {
         ray_capacity = res.x * res.y;
@@ -123,6 +156,8 @@ struct WavefrontResources
         closest.Init(ray_capacity);
         miss.Init(ray_capacity);
         shadow.Init(ray_capacity);
+
+        g_buffer.Init(ray_capacity);
     }
 
     void Free()
@@ -132,6 +167,8 @@ struct WavefrontResources
         closest.Free();
         miss.Free();
         shadow.Free();
+
+        g_buffer.Free();
     }
 
     void Resize(Point2i res)
@@ -143,6 +180,8 @@ struct WavefrontResources
         closest.Resize(ray_capacity);
         miss.Resize(ray_capacity);
         shadow.Resize(ray_capacity);
+
+        g_buffer.Resize(ray_capacity);
     }
 };
 

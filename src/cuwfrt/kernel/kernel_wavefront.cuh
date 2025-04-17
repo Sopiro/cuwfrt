@@ -30,7 +30,7 @@ __KERNEL__ void ResetCounts(
 
 // Generate primary rays for each pixel
 __KERNEL__ void GeneratePrimaryRays(
-    WavefrontRay* __restrict__ active_rays, Vec4* __restrict__ sample_buffer, Point2i res, Camera camera, int32 time
+    WavefrontRay* active_rays, Vec4* sample_buffer, GBuffer g_buffer, Point2i res, Camera camera, int32 time
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -56,11 +56,15 @@ __KERNEL__ void GeneratePrimaryRays(
     wf_ray.pixel_index = index;
 
     sample_buffer[index] *= time;
+
+    g_buffer.albedo[index] = Vec3(0);
+    g_buffer.normal[index] = Vec3(0);
+    g_buffer.depth[index] = 0;
 }
 
 // Trace rays and find closest intersection
 __KERNEL__ void TraceRay(
-    WavefrontRay* __restrict__ active_rays,
+    WavefrontRay* active_rays,
     int32 active_ray_count,
     RayQueues<WavefrontRay, Materials::count> q_closest,
     RayQueue<WavefrontMissRay> q_miss,
@@ -94,7 +98,7 @@ __KERNEL__ void TraceRay(
     }
 }
 
-__KERNEL__ void Miss(WavefrontMissRay* __restrict__ miss_rays, int32 miss_ray_count, Vec4* __restrict__ sample_buffer)
+__KERNEL__ void Miss(WavefrontMissRay* miss_rays, int32 miss_ray_count, Vec4* sample_buffer)
 {
     int32 index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= miss_ray_count) return;
@@ -108,12 +112,13 @@ __KERNEL__ void Miss(WavefrontMissRay* __restrict__ miss_rays, int32 miss_ray_co
 // Intersects closest, generate next bounce rays and shadow rays
 template <typename MaterialType>
 __KERNEL__ void Closest(
-    WavefrontRay* __restrict__ closest_rays,
+    WavefrontRay* closest_rays,
     int32 closest_ray_count,
     RayQueue<WavefrontRay> q_next,
     RayQueue<WavefrontShadowRay> q_shadow,
-    Vec4* __restrict__ sample_buffer,
+    Vec4* sample_buffer,
     GPUScene scene,
+    GBuffer g_buffer,
     int32 bounce
 )
 {
@@ -134,6 +139,13 @@ __KERNEL__ void Closest(
     Vec3 wo = Normalize(-ray.d);
 
     MaterialType* mat = GetMaterial(&scene, isect.prim)->Cast<MaterialType>();
+
+    if (bounce == 0)
+    {
+        g_buffer.albedo[pixel_index] = mat->Albedo(&scene, isect, wo);
+        g_buffer.normal[pixel_index] = isect.shading_normal;
+        g_buffer.depth[pixel_index] = isect.t;
+    }
 
     if (Vec3 Le = mat->Le(&scene, isect, wo); Le != Vec3(0))
     {
@@ -220,9 +232,7 @@ __KERNEL__ void Closest(
 }
 
 // Trace shadow rays, add contribution if unoccluded
-__KERNEL__ void TraceShadowRay(
-    WavefrontShadowRay* __restrict__ shadow_rays, int32 shadow_ray_count, Vec4* __restrict__ sample_buffer, GPUScene scene
-)
+__KERNEL__ void TraceShadowRay(WavefrontShadowRay* shadow_rays, int32 shadow_ray_count, Vec4* sample_buffer, GPUScene scene)
 {
     int32 index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= shadow_ray_count) return;
@@ -237,7 +247,7 @@ __KERNEL__ void TraceShadowRay(
 }
 
 // Finalize frame: average samples and apply gamma correction
-__KERNEL__ void Finalize(Vec4* __restrict__ sample_buffer, Vec4* __restrict__ frame_buffer, Point2i res, int32 time)
+__KERNEL__ void Finalize(Vec4* sample_buffer, Vec4* frame_buffer, GBuffer g_buffer, Point2i res, int32 time)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
