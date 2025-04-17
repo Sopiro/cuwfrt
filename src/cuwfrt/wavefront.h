@@ -145,8 +145,6 @@ struct WavefrontResources
     RayQueue<WavefrontMissRay> miss;
     RayQueue<WavefrontShadowRay> shadow;
 
-    GBuffer g_buffer;
-
     void Init(Point2i res)
     {
         ray_capacity = res.x * res.y;
@@ -156,8 +154,6 @@ struct WavefrontResources
         closest.Init(ray_capacity);
         miss.Init(ray_capacity);
         shadow.Init(ray_capacity);
-
-        g_buffer.Init(ray_capacity);
     }
 
     void Free()
@@ -167,8 +163,6 @@ struct WavefrontResources
         closest.Free();
         miss.Free();
         shadow.Free();
-
-        g_buffer.Free();
     }
 
     void Resize(Point2i res)
@@ -180,8 +174,6 @@ struct WavefrontResources
         closest.Resize(ray_capacity);
         miss.Resize(ray_capacity);
         shadow.Resize(ray_capacity);
-
-        g_buffer.Resize(ray_capacity);
     }
 };
 

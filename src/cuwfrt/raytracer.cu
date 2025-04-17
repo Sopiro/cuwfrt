@@ -24,6 +24,7 @@ RayTracer::RayTracer(Window* window, const Scene* scene, const Camera* camera, c
     , scene{ scene }
     , camera{ camera }
     , options{ options }
+    , frame_index{ 0 }
 {
     res = window->GetWindowSize();
 
@@ -65,16 +66,13 @@ void RayTracer::CreateFrameBuffer()
 
     size_t size;
     cudaCheck(cudaGraphicsMapResources(1, &cuda_pbo));
-    cudaCheck(cudaGraphicsResourceGetMappedPointer((void**)&d_frame_buffer, &size, cuda_pbo));
-    WakAssert(size == (res.x * res.y * sizeof(float4)));
+    cudaCheck(cudaGraphicsResourceGetMappedPointer((void**)&frame_buffer, &size, cuda_pbo));
 
-    cudaCheck(cudaMalloc(&d_sample_buffer, size));
+    WakAssert(size == (res.x * res.y * sizeof(float4)));
 }
 
 void RayTracer::DeleteFrameBuffer()
 {
-    cudaCheck(cudaFree(d_sample_buffer));
-
     cudaCheck(cudaGraphicsUnmapResources(1, &cuda_pbo));
     cudaCheck(cudaGraphicsUnregisterResource(cuda_pbo));
     glDeleteBuffers(1, &pbo);
@@ -86,6 +84,14 @@ void RayTracer::InitGPUResources()
     std::cout << "Init GPU resources" << std::endl;
     gpu_res.Init(scene);
     wf.Init(res);
+
+    const int32 capacity = res.x * res.y;
+    for (int32 i = 0; i < 2; ++i)
+    {
+        cudaCheck(cudaMalloc(&sample_buffer[i], capacity * sizeof(float4)));
+        g_buffer[i].Init(capacity);
+    }
+    cudaCheck(cudaMalloc(&accumulation_buffer, capacity * sizeof(float4)));
 
     for (size_t i = 0; i < streams.size(); ++i)
     {
@@ -103,6 +109,13 @@ void RayTracer::FreeGPUResources()
     std::cout << "Free GPU resources" << std::endl;
     gpu_res.Free();
     wf.Free();
+
+    for (int32 i = 0; i < 2; ++i)
+    {
+        cudaCheck(cudaFree(sample_buffer[i]));
+        g_buffer[i].Free();
+    }
+    cudaCheck(cudaFree(accumulation_buffer));
 
     for (size_t i = 0; i < streams.size(); ++i)
     {
@@ -132,17 +145,28 @@ void RayTracer::Resize(int32 width, int32 height)
     CreateFrameBuffer();
 
     wf.Resize(res);
+
+    const int32 capacity = res.x * res.y;
+    for (int32 i = 0; i < 2; ++i)
+    {
+        cudaCheck(cudaFree(sample_buffer[i]));
+        g_buffer[i].Free();
+
+        cudaCheck(cudaMalloc(&sample_buffer[i], capacity * sizeof(float4)));
+        g_buffer[i].Init(capacity);
+    }
+    cudaCheck(cudaFree(accumulation_buffer));
+    cudaCheck(cudaMalloc(&accumulation_buffer, capacity * sizeof(float4)));
 }
 
 void RayTracer::RayTrace(int32 kernel_index, int32 time)
 {
     kernel_index = (kernel_index + num_kernels) % num_kernels;
 
-    // Render to the PBO using CUDA
-    const dim3 threads(8, 8);
+    const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    kernels[kernel_index]<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, res, gpu_res.scene, *camera, *options, time);
+    kernels[kernel_index]<<<blocks, threads>>>(sample_buffer[0], frame_buffer, res, gpu_res.scene, *camera, *options, time);
 
     cudaCheckLastError();
     cudaCheck(cudaDeviceSynchronize());
@@ -150,6 +174,8 @@ void RayTracer::RayTrace(int32 kernel_index, int32 time)
 
 void RayTracer::RayTraceWavefront(int32 time)
 {
+    frame_index = 1 - frame_index;
+
     int32 num_active_rays = wf.ray_capacity;
     int32 num_next_rays = 0;
     int32 num_closest_rays[wf.closest_queue_count] = { 0 };
@@ -160,7 +186,9 @@ void RayTracer::RayTraceWavefront(int32 time)
     {
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        GeneratePrimaryRays<<<blocks, threads>>>(wf.active.rays, d_sample_buffer, wf.g_buffer, res, *camera, time);
+        GeneratePrimaryRays<<<blocks, threads>>>(
+            wf.active.rays, accumulation_buffer, sample_buffer[frame_index], g_buffer[frame_index], res, *camera, time
+        );
         cudaCheckLastError();
     }
 
@@ -190,7 +218,7 @@ void RayTracer::RayTraceWavefront(int32 time)
         {
             const int32 threads = 128;
             int32 blocks = (num_miss_rays + threads - 1) / threads;
-            Miss<<<blocks, threads, 0, streams[0]>>>(wf.miss.rays, num_miss_rays, d_sample_buffer);
+            Miss<<<blocks, threads, 0, streams[0]>>>(wf.miss.rays, num_miss_rays, sample_buffer[frame_index]);
             cudaCheckLastError();
         }
 
@@ -205,8 +233,8 @@ void RayTracer::RayTraceWavefront(int32 time)
                 DynamicDispatcher<Materials>(i).Dispatch([&](auto* m) {
                     using MaterialType = std::remove_pointer_t<decltype(m)>;
                     Closest<MaterialType><<<blocks, threads, 0, ray_queue_streams[i]>>>(
-                        wf.closest.rays[i], num_closest_rays[i], wf.next, wf.shadow, d_sample_buffer, gpu_res.scene, wf.g_buffer,
-                        bounce
+                        wf.closest.rays[i], num_closest_rays[i], wf.next, wf.shadow, sample_buffer[frame_index], gpu_res.scene,
+                        g_buffer[frame_index], bounce
                     );
                     cudaCheckLastError();
                 });
@@ -231,7 +259,9 @@ void RayTracer::RayTraceWavefront(int32 time)
         {
             const int32 threads = 128;
             int32 blocks = (num_shadow_rays + threads - 1) / threads;
-            TraceShadowRay<<<blocks, threads, 0, streams[1]>>>(wf.shadow.rays, num_shadow_rays, d_sample_buffer, gpu_res.scene);
+            TraceShadowRay<<<blocks, threads, 0, streams[1]>>>(
+                wf.shadow.rays, num_shadow_rays, sample_buffer[frame_index], gpu_res.scene
+            );
             cudaCheckLastError();
         }
 
@@ -251,7 +281,9 @@ void RayTracer::RayTraceWavefront(int32 time)
     {
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        Finalize<<<blocks, threads>>>(d_sample_buffer, d_frame_buffer, wf.g_buffer, res, time);
+        Finalize<<<blocks, threads>>>(
+            frame_buffer, accumulation_buffer, sample_buffer[frame_index], g_buffer[frame_index], res, time
+        );
         cudaCheckLastError();
         cudaCheck(cudaDeviceSynchronize());
     }

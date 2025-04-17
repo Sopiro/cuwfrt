@@ -30,7 +30,13 @@ __KERNEL__ void ResetCounts(
 
 // Generate primary rays for each pixel
 __KERNEL__ void GeneratePrimaryRays(
-    WavefrontRay* active_rays, Vec4* sample_buffer, GBuffer g_buffer, Point2i res, Camera camera, int32 time
+    WavefrontRay* active_rays,
+    Vec4* accumulataion_buffer,
+    Vec4* sample_buffer,
+    GBuffer g_buffer,
+    Point2i res,
+    Camera camera,
+    int32 time
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -55,7 +61,8 @@ __KERNEL__ void GeneratePrimaryRays(
 
     wf_ray.pixel_index = index;
 
-    sample_buffer[index] *= time;
+    accumulataion_buffer[index] *= time;
+    sample_buffer[index] = Vec4(0);
 
     g_buffer.albedo[index] = Vec3(0);
     g_buffer.normal[index] = Vec3(0);
@@ -247,7 +254,9 @@ __KERNEL__ void TraceShadowRay(WavefrontShadowRay* shadow_rays, int32 shadow_ray
 }
 
 // Finalize frame: average samples and apply gamma correction
-__KERNEL__ void Finalize(Vec4* sample_buffer, Vec4* frame_buffer, GBuffer g_buffer, Point2i res, int32 time)
+__KERNEL__ void Finalize(
+    Vec4* frame_buffer, Vec4* accumulation_buffer, Vec4* sample_buffer, GBuffer g_buffer, Point2i res, int32 time
+)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -255,11 +264,12 @@ __KERNEL__ void Finalize(Vec4* sample_buffer, Vec4* frame_buffer, GBuffer g_buff
 
     int32 index = y * res.x + x;
 
-    sample_buffer[index] /= time + 1.0f;
+    accumulation_buffer[index] += sample_buffer[index];
+    accumulation_buffer[index] /= time + 1.0f;
 
-    frame_buffer[index].x = std::pow(sample_buffer[index].x, 1 / 2.2f);
-    frame_buffer[index].y = std::pow(sample_buffer[index].y, 1 / 2.2f);
-    frame_buffer[index].z = std::pow(sample_buffer[index].z, 1 / 2.2f);
+    frame_buffer[index].x = std::pow(accumulation_buffer[index].x, 1 / 2.2f);
+    frame_buffer[index].y = std::pow(accumulation_buffer[index].y, 1 / 2.2f);
+    frame_buffer[index].z = std::pow(accumulation_buffer[index].z, 1 / 2.2f);
     frame_buffer[index].w = 1.0f;
 }
 
