@@ -55,14 +55,14 @@ __KERNEL__ void PathTraceNEE(
     GPUScene scene,
     Camera camera,
     Options options,
-    int32 time
+    int32 spp
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     if (x >= res.x || y >= res.y) return;
 
-    RNG rng(Hash(x, y, time));
+    RNG rng(Hash(x, y, spp));
 
     // Generate primary ray
     Ray ray;
@@ -146,9 +146,9 @@ __KERNEL__ void PathTraceNEE(
     }
 
     int32 index = y * res.x + x;
-    sample_buffer[index] *= time;
+    sample_buffer[index] *= spp;
     sample_buffer[index] += Vec4(L, 0);
-    sample_buffer[index] /= time + 1.0f;
+    sample_buffer[index] /= spp + 1.0f;
 
     frame_buffer[index].x = std::pow(sample_buffer[index].x, 1 / 2.2f);
     frame_buffer[index].y = std::pow(sample_buffer[index].y, 1 / 2.2f);

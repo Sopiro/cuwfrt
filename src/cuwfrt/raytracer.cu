@@ -15,7 +15,7 @@ namespace cuwfrt
 {
 
 const int32 RayTracer::num_kernels = 6;
-const char* RayTracer::kernel_name[] = { "Normal", "AO", "Albedo", "Pathtrace Naive", "Pathtrace NEE", "Wavefront" };
+const char* RayTracer::kernel_names[] = { "Normal", "AO", "Albedo", "Pathtrace Naive", "Pathtrace NEE", "Wavefront" };
 
 static Kernel* kernels[RayTracer::num_kernels] = { RenderNormal, RaytraceAO, RaytraceAlbedo, PathTraceNaive, PathTraceNEE };
 
@@ -25,6 +25,7 @@ RayTracer::RayTracer(Window* window, const Scene* scene, const Camera* camera, c
     , camera{ camera }
     , options{ options }
     , frame_index{ 0 }
+    , spp{ 0 }
 {
     res = window->GetWindowSize();
 
@@ -159,22 +160,37 @@ void RayTracer::Resize(int32 width, int32 height)
     cudaCheck(cudaMalloc(&accumulation_buffer, capacity * sizeof(float4)));
 }
 
-void RayTracer::RayTrace(int32 kernel_index, int32 time)
+void RayTracer::Clear()
+{
+    spp = 0;
+
+    g_buffer[frame_index].camera_ray = camera->GetRay();
+
+    const dim3 threads(16, 16);
+    const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
+    ClearBuffer<<<blocks, threads>>>(accumulation_buffer, res);
+    cudaCheckLastError();
+    cudaCheck(cudaDeviceSynchronize());
+}
+
+void RayTracer::RayTrace(int32 kernel_index)
 {
     kernel_index = (kernel_index + num_kernels) % num_kernels;
 
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    kernels[kernel_index]<<<blocks, threads>>>(sample_buffer[0], frame_buffer, res, gpu_res.scene, *camera, *options, time);
+    kernels[kernel_index]<<<blocks, threads>>>(sample_buffer[0], frame_buffer, res, gpu_res.scene, *camera, *options, spp++);
 
     cudaCheckLastError();
     cudaCheck(cudaDeviceSynchronize());
 }
 
-void RayTracer::RayTraceWavefront(int32 time)
+void RayTracer::RayTraceWavefront()
 {
     frame_index = 1 - frame_index;
+
+    g_buffer[frame_index].camera_ray = camera->GetRay();
 
     int32 num_active_rays = wf.ray_capacity;
     int32 num_next_rays = 0;
@@ -187,7 +203,7 @@ void RayTracer::RayTraceWavefront(int32 time)
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
         GeneratePrimaryRays<<<blocks, threads>>>(
-            wf.active.rays, accumulation_buffer, sample_buffer[frame_index], g_buffer[frame_index], res, *camera, time
+            wf.active.rays, sample_buffer[frame_index], g_buffer[frame_index], res, *camera, spp
         );
         cudaCheckLastError();
     }
@@ -282,7 +298,7 @@ void RayTracer::RayTraceWavefront(int32 time)
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
         Finalize<<<blocks, threads>>>(
-            frame_buffer, accumulation_buffer, sample_buffer[frame_index], g_buffer[frame_index], res, time
+            frame_buffer, accumulation_buffer, sample_buffer[frame_index], g_buffer[frame_index], res, ++spp
         );
         cudaCheckLastError();
         cudaCheck(cudaDeviceSynchronize());

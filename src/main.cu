@@ -110,12 +110,13 @@ static void Render()
         }
         ImGui::Separator();
         if (ImGui::Checkbox("Render sky", &options.render_sky)) time = 0;
-        if (ImGui::Combo("##", &selection, RayTracer::kernel_name, RayTracer::num_kernels)) time = 0;
+        if (ImGui::Combo("##", &selection, RayTracer::kernel_names, RayTracer::num_kernels)) time = 0;
     }
     ImGui::End();
 
     if (time == 0)
     {
+        raytracer->Clear();
         t0 = clock::now();
     }
 
@@ -124,11 +125,11 @@ static void Render()
     {
         if (selection > 4)
         {
-            raytracer->RayTraceWavefront(time);
+            raytracer->RayTraceWavefront();
         }
         else
         {
-            raytracer->RayTrace(selection, time);
+            raytracer->RayTrace(selection);
         }
     }
 

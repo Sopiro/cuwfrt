@@ -71,4 +71,14 @@ __KERNEL__ void RenderNormal(
     frame_buffer[index].w = 1.0f;
 }
 
+__KERNEL__ void ClearBuffer(Vec4* __restrict__ buffer, Point2i res)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x >= res.x || y >= res.y) return;
+
+    const int32 index = y * res.x + x;
+    buffer[index] = Vec4(0);
+}
+
 } // namespace cuwfrt

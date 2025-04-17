@@ -103,6 +103,8 @@ struct RayQueues
 
 struct GBuffer
 {
+    Ray camera_ray;
+
     Vec3* albedo;
     Vec3* normal;
     Float* depth;

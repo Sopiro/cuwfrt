@@ -29,13 +29,14 @@ class RayTracer
 {
 public:
     static const int32 num_kernels;
-    static const char* kernel_name[];
+    static const char* kernel_names[];
 
     RayTracer(Window* window, const Scene* scene, const Camera* camera, const Options* options);
     ~RayTracer();
 
-    void RayTrace(int32 kernel_index, int32 time);
-    void RayTraceWavefront(int32 time);
+    void Clear();
+    void RayTrace(int32 kernel_index);
+    void RayTraceWavefront();
     void DrawFrame();
 
 private:
@@ -60,6 +61,8 @@ private:
     int32 frame_index;
     Vec4* sample_buffer[2];
     GBuffer g_buffer[2];
+
+    int32 spp;
     Vec4* accumulation_buffer;
 
     QuadRenderer qr;
