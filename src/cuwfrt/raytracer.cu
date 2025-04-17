@@ -164,7 +164,7 @@ void RayTracer::Clear()
 {
     spp = 0;
 
-    g_buffer[frame_index].camera_ray = camera->GetRay();
+    g_camera[frame_index] = *camera;
 
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
@@ -190,7 +190,8 @@ void RayTracer::RayTraceWavefront()
 {
     frame_index = 1 - frame_index;
 
-    g_buffer[frame_index].camera_ray = camera->GetRay();
+    // Save camera data for motion vector calculation
+    g_camera[frame_index] = *camera;
 
     int32 num_active_rays = wf.ray_capacity;
     int32 num_next_rays = 0;
@@ -203,7 +204,7 @@ void RayTracer::RayTraceWavefront()
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
         GeneratePrimaryRays<<<blocks, threads>>>(
-            wf.active.rays, sample_buffer[frame_index], g_buffer[frame_index], res, *camera, spp
+            wf.active.rays, sample_buffer[frame_index], res, g_camera[frame_index], g_buffer[frame_index], spp
         );
         cudaCheckLastError();
     }

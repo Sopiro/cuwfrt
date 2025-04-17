@@ -30,7 +30,7 @@ __KERNEL__ void ResetCounts(
 
 // Generate primary rays for each pixel
 __KERNEL__ void GeneratePrimaryRays(
-    WavefrontRay* active_rays, Vec4* sample_buffer, GBuffer g_buffer, Point2i res, Camera camera, int32 seed
+    WavefrontRay* active_rays, Vec4* sample_buffer, Point2i res, Camera camera, GBuffer g_buffer, int32 seed
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -57,9 +57,9 @@ __KERNEL__ void GeneratePrimaryRays(
 
     sample_buffer[index] = Vec4(0);
 
+    g_buffer.position[index] = Vec3(0);
     g_buffer.albedo[index] = Vec3(0);
     g_buffer.normal[index] = Vec3(0);
-    g_buffer.depth[index] = 0;
 }
 
 // Trace rays and find closest intersection
@@ -142,9 +142,9 @@ __KERNEL__ void Closest(
 
     if (bounce == 0)
     {
+        g_buffer.position[pixel_index] = isect.point;
         g_buffer.albedo[pixel_index] = mat->Albedo(&scene, isect, wo);
         g_buffer.normal[pixel_index] = isect.shading_normal;
-        g_buffer.depth[pixel_index] = isect.t;
     }
 
     if (Vec3 Le = mat->Le(&scene, isect, wo); Le != Vec3(0))

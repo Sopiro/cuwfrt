@@ -60,6 +60,7 @@ private:
 
     int32 frame_index;
     Vec4* sample_buffer[2];
+    Camera g_camera[2];
     GBuffer g_buffer[2];
 
     int32 spp;

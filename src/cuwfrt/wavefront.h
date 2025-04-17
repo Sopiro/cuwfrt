@@ -103,34 +103,32 @@ struct RayQueues
 
 struct GBuffer
 {
-    Ray camera_ray;
-
+    Vec3* position;
     Vec3* albedo;
     Vec3* normal;
-    Float* depth;
 
     void Init(int32 capacity)
     {
-        cudaCheck(cudaMalloc(&albedo, capacity * sizeof(Vec3)));
-        cudaCheck(cudaMalloc(&normal, capacity * sizeof(Vec3)));
-        cudaCheck(cudaMalloc(&depth, capacity * sizeof(Float)));
+        cudaCheck(cudaMalloc(&position, capacity * sizeof(decltype(*position))));
+        cudaCheck(cudaMalloc(&albedo, capacity * sizeof(decltype(*albedo))));
+        cudaCheck(cudaMalloc(&normal, capacity * sizeof(decltype(*normal))));
     }
 
     void Free()
     {
+        cudaCheck(cudaFree(position));
         cudaCheck(cudaFree(albedo));
         cudaCheck(cudaFree(normal));
-        cudaCheck(cudaFree(depth));
     }
 
     void Resize(int32 capacity)
     {
+        cudaCheck(cudaFree(position));
         cudaCheck(cudaFree(albedo));
         cudaCheck(cudaFree(normal));
-        cudaCheck(cudaFree(depth));
-        cudaCheck(cudaMalloc(&albedo, capacity * sizeof(Vec3)));
-        cudaCheck(cudaMalloc(&normal, capacity * sizeof(Vec3)));
-        cudaCheck(cudaMalloc(&depth, capacity * sizeof(Float)));
+        cudaCheck(cudaMalloc(&position, capacity * sizeof(decltype(*position))));
+        cudaCheck(cudaMalloc(&albedo, capacity * sizeof(decltype(*albedo))));
+        cudaCheck(cudaMalloc(&normal, capacity * sizeof(decltype(*normal))));
     }
 };
 

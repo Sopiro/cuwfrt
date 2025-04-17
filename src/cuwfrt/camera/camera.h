@@ -61,12 +61,6 @@ public:
         return 1;
     }
 
-    Ray GetRay() const
-    {
-        return Ray(origin, w);
-    }
-
-private:
     Point2i resolution;
 
     Point3 origin;
