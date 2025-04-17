@@ -24,11 +24,16 @@ inline __GPU__ Base* GetPolymorphicObject(
     return handlers[index.type_index](vectors, offsets, index.element_index);
 }
 
-inline __GPU__ void AtomicAdd(Vec4* a, const Vec3& b)
+inline __GPU__ void AtomicAdd(Vec4* a, Vec3 b)
 {
     atomicAdd(&a->x, b.x);
     atomicAdd(&a->y, b.y);
     atomicAdd(&a->z, b.z);
+}
+
+inline __GPU__ Vec4 ToSRGB(Vec4 color)
+{
+    return Vec4(std::pow(color.x, 1 / 2.2f), std::pow(color.y, 1 / 2.2f), std::pow(color.z, 1 / 2.2f), 1.0f);
 }
 
 } // namespace cuwfrt

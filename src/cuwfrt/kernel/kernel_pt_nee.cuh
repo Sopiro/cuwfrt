@@ -150,10 +150,7 @@ __KERNEL__ void PathTraceNEE(
     sample_buffer[index] += Vec4(L, 0);
     sample_buffer[index] /= spp + 1.0f;
 
-    frame_buffer[index].x = std::pow(sample_buffer[index].x, 1 / 2.2f);
-    frame_buffer[index].y = std::pow(sample_buffer[index].y, 1 / 2.2f);
-    frame_buffer[index].z = std::pow(sample_buffer[index].z, 1 / 2.2f);
-    frame_buffer[index].w = 1.0f;
+    frame_buffer[index] = ToSRGB(sample_buffer[index]);
 }
 
 } // namespace cuwfrt

@@ -69,10 +69,7 @@ __KERNEL__ void RaytraceAO(
     sample_buffer[index] += occlusion;
     sample_buffer[index] /= time + 1.0f;
 
-    frame_buffer[index].x = std::pow(sample_buffer[index].x, 1 / 2.2f);
-    frame_buffer[index].y = std::pow(sample_buffer[index].y, 1 / 2.2f);
-    frame_buffer[index].z = std::pow(sample_buffer[index].z, 1 / 2.2f);
-    frame_buffer[index].w = 1.0f;
+    frame_buffer[index] = ToSRGB(sample_buffer[index]);
 }
 
 } // namespace cuwfrt

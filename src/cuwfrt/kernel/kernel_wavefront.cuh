@@ -259,10 +259,7 @@ __KERNEL__ void Finalize(
 
     accumulation_buffer[index] += sample_buffer[index];
 
-    frame_buffer[index].x = std::pow(accumulation_buffer[index].x / spp, 1 / 2.2f);
-    frame_buffer[index].y = std::pow(accumulation_buffer[index].y / spp, 1 / 2.2f);
-    frame_buffer[index].z = std::pow(accumulation_buffer[index].z / spp, 1 / 2.2f);
-    frame_buffer[index].w = 1.0f;
+    frame_buffer[index] = ToSRGB(accumulation_buffer[index] / spp);
 }
 
 } // namespace cuwfrt
