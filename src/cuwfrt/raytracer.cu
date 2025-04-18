@@ -17,7 +17,7 @@ namespace cuwfrt
 const int32 RayTracer::num_kernels = 6;
 const char* RayTracer::kernel_names[] = { "Normal", "AO", "Albedo", "Pathtrace Naive", "Pathtrace NEE", "Wavefront" };
 
-static Kernel* kernels[RayTracer::num_kernels] = { RenderNormal, RaytraceAO, RaytraceAlbedo, PathTraceNaive, PathTraceNEE };
+static Kernel* kernels[RayTracer::num_kernels - 1] = { RenderNormal, RaytraceAO, RaytraceAlbedo, PathTraceNaive, PathTraceNEE };
 
 RayTracer::RayTracer(Window* window, const Scene* scene, const Camera* camera, const Options* options)
     : window{ window }
@@ -175,7 +175,7 @@ void RayTracer::Clear()
 
 void RayTracer::RayTrace(int32 kernel_index)
 {
-    kernel_index = (kernel_index + num_kernels) % num_kernels;
+    kernel_index = Clamp(kernel_index, 0, num_kernels - 1);
 
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
