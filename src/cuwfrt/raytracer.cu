@@ -162,15 +162,15 @@ void RayTracer::Resize(int32 width, int32 height)
 
 void RayTracer::Clear()
 {
-    spp = 0;
-
     g_camera[frame_index] = *camera;
 
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-    ClearBuffer<<<blocks, threads>>>(accumulation_buffer, res);
+    ClearBuffers<<<blocks, threads>>>(sample_buffer[frame_index], accumulation_buffer, res, spp);
     cudaCheckLastError();
     cudaCheck(cudaDeviceSynchronize());
+
+    spp = 0;
 }
 
 void RayTracer::RayTrace(int32 kernel_index)
@@ -299,7 +299,8 @@ void RayTracer::RayTraceWavefront()
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
         Finalize<<<blocks, threads>>>(
-            frame_buffer, accumulation_buffer, sample_buffer[frame_index], g_buffer[frame_index], res, ++spp
+            frame_buffer, accumulation_buffer, sample_buffer[1 - frame_index], sample_buffer[frame_index], res,
+            g_buffer[1 - frame_index], g_buffer[frame_index], g_camera[1 - frame_index], ++spp
         );
         cudaCheckLastError();
         cudaCheck(cudaDeviceSynchronize());

@@ -10,6 +10,17 @@
 namespace cuwfrt
 {
 
+__KERNEL__ void ClearBuffers(Vec4* sample_buffer, Vec4* accumulation_buffer, Point2i res, int32 spp)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x >= res.x || y >= res.y) return;
+
+    const int32 index = y * res.x + x;
+    sample_buffer[index] = accumulation_buffer[index] / spp;
+    accumulation_buffer[index] = Vec4(0);
+}
+
 __KERNEL__ void ResetCounts(
     int32* next_ray_count, RayQueues<WavefrontRay, Materials::count> queue_closest, int32* miss_ray_count, int32* shadow_ray_count
 )
@@ -57,7 +68,7 @@ __KERNEL__ void GeneratePrimaryRays(
 
     sample_buffer[index] = Vec4(0);
 
-    g_buffer.position[index] = Vec3(0);
+    g_buffer.position[index] = Vec4(0);
     g_buffer.albedo[index] = Vec3(0);
     g_buffer.normal[index] = Vec3(0);
 }
@@ -142,7 +153,7 @@ __KERNEL__ void Closest(
 
     if (bounce == 0)
     {
-        g_buffer.position[pixel_index] = isect.point;
+        g_buffer.position[pixel_index] = Vec4(isect.point, isect.t);
         g_buffer.albedo[pixel_index] = mat->Albedo(&scene, isect, wo);
         g_buffer.normal[pixel_index] = isect.shading_normal;
     }
@@ -248,14 +259,38 @@ __KERNEL__ void TraceShadowRay(WavefrontShadowRay* shadow_rays, int32 shadow_ray
 
 // Finalize frame: average samples and apply gamma correction
 __KERNEL__ void Finalize(
-    Vec4* frame_buffer, Vec4* accumulation_buffer, Vec4* sample_buffer, GBuffer g_buffer, Point2i res, int32 spp
+    Vec4* frame_buffer,
+    Vec4* accumulation_buffer,
+    Vec4* prev_sample_buffer,
+    Vec4* sample_buffer,
+    Point2i res,
+    GBuffer prev_g_buffer,
+    GBuffer g_buffer,
+    Camera prev_camera,
+    int32 spp
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     if (x >= res.x || y >= res.y) return;
 
-    int32 index = y * res.x + x;
+    const int32 index = y * res.x + x;
+
+    Point3 position = Point3(g_buffer.position[index].x, g_buffer.position[index].y, g_buffer.position[index].z);
+    Point2i p = prev_camera.GetRasterPos(position); // Previous pixel position (can have negative)
+
+    const int32 prev_index = p.x + p.y * res.x;
+
+    // Motion vector
+    // Vec2i mv = p - Point2i(x, y);
+
+    if (p.x >= 0 && p.x < res.x && p.y >= 0 && p.y < res.y && g_buffer.position[index].w > 0)
+    {
+        if (prev_g_buffer.position[prev_index].w > 0)
+        {
+            sample_buffer[index] = Lerp(prev_sample_buffer[prev_index], sample_buffer[index], 0.2f);
+        }
+    }
 
     accumulation_buffer[index] += sample_buffer[index];
 

@@ -39,9 +39,9 @@ static Vec3 GetForward()
     float yaw = player.rotation.y;
 
     Vec3 forward;
-    forward.x = std::cos(pitch) * std::sin(yaw);
-    forward.y = -std::sin(pitch);
-    forward.z = std::cos(pitch) * std::cos(yaw);
+    forward.x = -std::cos(pitch) * std::sin(yaw);
+    forward.y = std::sin(pitch);
+    forward.z = -std::cos(pitch) * std::cos(yaw);
 
     return Normalize(forward);
 }
@@ -120,7 +120,7 @@ static void Render()
         t0 = clock::now();
     }
 
-    camera = Camera(player.position, GetForward(), y_axis, vfov, aperture, focus_dist, window->GetWindowSize());
+    camera = Camera(player.position, GetForward(), y_axis, vfov, aperture, focus_dist, window->GetWindowSize(), 0.1f);
     if (time < max_samples)
     {
         if (selection > 4)

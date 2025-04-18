@@ -103,7 +103,7 @@ struct RayQueues
 
 struct GBuffer
 {
-    Vec3* position;
+    Vec4* position; // depth in w
     Vec3* albedo;
     Vec3* normal;
 
