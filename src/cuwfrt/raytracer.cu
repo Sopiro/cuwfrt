@@ -302,9 +302,18 @@ void RayTracer::Denoise()
     {
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        PrepareDenoise<<<blocks, threads>>>(
+        FilterTemporal<<<blocks, threads>>>(
+            sample_buffer[frame_index], res, g_buffer[1 - frame_index], g_buffer[frame_index], g_camera[1 - frame_index],
+            h_buffer[1 - frame_index], h_buffer[frame_index]
+        );
+    }
+
+    {
+        const dim3 threads(16, 16);
+        const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
+        EstimateVariance<<<blocks, threads>>>(
             frame_buffer, sample_buffer[1 - frame_index], sample_buffer[frame_index], res, g_buffer[1 - frame_index],
-            g_buffer[frame_index], g_camera[1 - frame_index]
+            g_buffer[frame_index], g_camera[1 - frame_index], h_buffer[1 - frame_index], h_buffer[frame_index]
         );
     }
 

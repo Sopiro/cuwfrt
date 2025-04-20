@@ -9,6 +9,11 @@
 namespace cuwfrt
 {
 
+inline __GPU__ Float Luminance(Vec4 color)
+{
+    return 0.2126f * color.x + 0.7152f * color.y + 0.0722f * color.z;
+}
+
 inline __GPU__ bool ValidateReprojection(
     const GBuffer& prev_g_buffer, const GBuffer& g_buffer, Point2i res, int32 index, Point2i p0, int32 index0
 )
@@ -40,14 +45,14 @@ inline __GPU__ bool ValidateReprojection(
     return true;
 }
 
-__KERNEL__ void PrepareDenoise(
-    Vec4* frame_buffer,
-    Vec4* prev_sample_buffer,
+__KERNEL__ void FilterTemporal(
     Vec4* sample_buffer,
     Point2i res,
     GBuffer prev_g_buffer,
     GBuffer g_buffer,
-    Camera prev_camera
+    Camera prev_camera,
+    HistoryBuffer prev_h_buffer,
+    HistoryBuffer h_buffer
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -56,51 +61,61 @@ __KERNEL__ void PrepareDenoise(
 
     const int32 index = y * res.x + x;
 
-    // Approximate depth derivatives
-    Float dzdx, dzdy;
-    if (x > 0 && x < res.x - 1)
-    {
-        Float z0 = g_buffer.position[y * res.x + (x - 1)].w;
-        Float z1 = g_buffer.position[y * res.x + (x + 1)].w;
-        dzdx = 0.5f * (z1 - z0);
-    }
-    else if (x < res.x - 1)
-    {
-        Float z = g_buffer.position[index].w;
-        Float z1 = g_buffer.position[y * res.x + (x + 1)].w;
-        dzdx = z1 - z;
-    }
-
-    if (y > 0 && y < res.y - 1)
-    {
-        Float z1 = g_buffer.position[(y - 1) * res.x + x].w;
-        Float z0 = g_buffer.position[(y + 1) * res.x + x].w;
-        dzdy = 0.5f * (z0 - z1);
-    }
-    else if (y < res.y - 1)
-    {
-        Float z = g_buffer.position[index].w;
-        Float z0 = g_buffer.position[(y + 1) * res.x + x].w;
-        dzdy = z0 - z;
-    }
-
     // Find previous pixel position
-    const Point2i p0 = prev_camera.GetRasterPos(GetVec3(g_buffer.position[index]));
-    const int32 index0 = p0.x + p0.y * res.x;
+    Point2i p0 = prev_camera.GetRasterPos(GetVec3(g_buffer.position[index]));
+    int32 index0 = p0.x + p0.y * res.x;
 
     // Demomuldate albedo. We are going to filter the illumination only
-    // sample_buffer[index] /= g_buffer.albedo[index];
+    sample_buffer[index] /= g_buffer.albedo[index];
 
-    Float alpha = 0.2f;
+    int32 history = 0;
+    Float alpha = 1;
+    Vec2 moments0(0);
+    Vec4 color0(0);
 
     // Temporal reprojection
     bool reprojectable = ValidateReprojection(prev_g_buffer, g_buffer, res, index, p0, index0);
     if (reprojectable)
     {
-        sample_buffer[index] = Lerp(prev_sample_buffer[index0], sample_buffer[index], alpha);
+        alpha = 0.2f;
+        moments0 = prev_h_buffer.moments[index0];
+        color0 = prev_h_buffer.color[index0];
+        history = color0.w + 1;
     }
 
-    frame_buffer[index] = ToSRGB(sample_buffer[index]);
+    // Estimate variance with exponentially averaged the luminance moments
+    Float l = Luminance(sample_buffer[index]);
+    Float l2 = l * l;
+
+    Vec2 moments = Lerp(moments0, Vec2(l, l2), alpha);
+    Float variance = fmax(0.0f, moments.y - moments.x * moments.x);
+
+    // Temporal filter the illumination 4.1
+    sample_buffer[index] = Lerp(color0, sample_buffer[index], alpha);
+
+    h_buffer.moments[index] = moments;
+    h_buffer.color[index].w = history;
+}
+
+__KERNEL__ void EstimateVariance(
+    Vec4* frame_buffer,
+    Vec4* prev_sample_buffer,
+    Vec4* sample_buffer,
+    Point2i res,
+    GBuffer prev_g_buffer,
+    GBuffer g_buffer,
+    Camera prev_camera,
+    HistoryBuffer prev_h_buffer,
+    HistoryBuffer h_buffer
+)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x >= res.x || y >= res.y) return;
+
+    const int32 index = y * res.x + x;
+
+    frame_buffer[index] = ToSRGB(Vec4(h_buffer.color[index].w, h_buffer.color[index].w, h_buffer.color[index].w, 1));
 }
 
 } // namespace cuwfrt
