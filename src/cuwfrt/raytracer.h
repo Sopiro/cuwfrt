@@ -37,6 +37,7 @@ public:
     void Clear();
     void RayTrace(int32 kernel_index);
     void RayTraceWavefront();
+    void Denoise();
     void DrawFrame();
 
 private:

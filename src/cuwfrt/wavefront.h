@@ -103,9 +103,9 @@ struct RayQueues
 
 struct GBuffer
 {
-    Vec4* position; // w: linear depth
-    Vec4* normal;   // w: triangle index
-    Vec4* albedo;   // w: material index
+    Vec4* position; // w: camera space linear depth
+    Vec4* normal;
+    Vec4* albedo;
 
     void Init(int32 capacity)
     {

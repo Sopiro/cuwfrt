@@ -7,6 +7,7 @@
 #include "cuwfrt/kernel/kernel_albedo.cuh"
 #include "cuwfrt/kernel/kernel_ao.cuh"
 #include "cuwfrt/kernel/kernel_debug.cuh"
+#include "cuwfrt/kernel/kernel_denoise.cuh"
 #include "cuwfrt/kernel/kernel_pt_naive.cuh"
 #include "cuwfrt/kernel/kernel_pt_nee.cuh"
 #include "cuwfrt/kernel/kernel_wavefront.cuh"
@@ -164,11 +165,11 @@ void RayTracer::Clear()
 {
     g_camera[frame_index] = *camera;
 
-    const dim3 threads(16, 16);
-    const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-    ClearBuffers<<<blocks, threads>>>(sample_buffer[frame_index], accumulation_buffer, res, spp);
-    cudaCheckLastError();
-    cudaCheck(cudaDeviceSynchronize());
+    // const dim3 threads(16, 16);
+    // const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
+    // ClearBuffers<<<blocks, threads>>>(sample_buffer[frame_index], accumulation_buffer, res, spp);
+    // cudaCheckLastError();
+    // cudaCheck(cudaDeviceSynchronize());
 
     spp = 0;
 }
@@ -204,7 +205,7 @@ void RayTracer::RayTraceWavefront()
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
         GeneratePrimaryRays<<<blocks, threads>>>(
-            wf.active.rays, sample_buffer[frame_index], res, g_camera[frame_index], g_buffer[frame_index], spp
+            wf.active.rays, sample_buffer[frame_index], res, g_camera[frame_index], g_buffer[frame_index], spp++
         );
         cudaCheckLastError();
     }
@@ -293,18 +294,30 @@ void RayTracer::RayTraceWavefront()
             break;
         }
     }
+}
 
-    // Finalize samples
+void RayTracer::Denoise()
+{
     {
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        Finalize<<<blocks, threads>>>(
-            frame_buffer, accumulation_buffer, sample_buffer[1 - frame_index], sample_buffer[frame_index], res,
-            g_buffer[1 - frame_index], g_buffer[frame_index], g_camera[1 - frame_index], ++spp
+        PrepareDenoise<<<blocks, threads>>>(
+            frame_buffer, sample_buffer[1 - frame_index], sample_buffer[frame_index], res, g_buffer[1 - frame_index],
+            g_buffer[frame_index], g_camera[1 - frame_index]
         );
-        cudaCheckLastError();
-        cudaCheck(cudaDeviceSynchronize());
     }
+
+    // // Finalize samples
+    // {
+    //     const dim3 threads(16, 16);
+    //     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
+    //     Finalize<<<blocks, threads>>>(
+    //         frame_buffer, accumulation_buffer, sample_buffer[1 - frame_index], sample_buffer[frame_index], res,
+    //         g_buffer[1 - frame_index], g_buffer[frame_index], g_camera[1 - frame_index], ++spp
+    //     );
+    //     cudaCheckLastError();
+    //     cudaCheck(cudaDeviceSynchronize());
+    // }
 }
 
 void RayTracer::DrawFrame()
