@@ -32,7 +32,7 @@ inline __GPU__ bool ValidateReprojection(
     }
 
     // Test position differences
-    if (Dist2(GetVec3(prev_g_buffer.position[index0]), GetVec3(g_buffer.position[index])) > 0.02f)
+    if (Dist2(GetVec3(prev_g_buffer.position[index0]), GetVec3(g_buffer.position[index])) > 0.001f)
     {
         return false;
     }

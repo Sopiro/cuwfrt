@@ -5,6 +5,7 @@
 #include "scene/gpu_scene.h"
 #include "scene/scene.h"
 
+#include "denoise.h"
 #include "wavefront.h"
 
 #include "camera/camera.h"
@@ -61,8 +62,10 @@ private:
 
     int32 frame_index;
     Vec4* sample_buffer[2];
+
     Camera g_camera[2];
     GBuffer g_buffer[2];
+    HistoryBuffer h_buffer[2];
 
     int32 spp;
     Vec4* accumulation_buffer;

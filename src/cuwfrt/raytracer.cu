@@ -92,6 +92,7 @@ void RayTracer::InitGPUResources()
     {
         cudaCheck(cudaMalloc(&sample_buffer[i], capacity * sizeof(float4)));
         g_buffer[i].Init(capacity);
+        h_buffer[i].Init(capacity);
     }
     cudaCheck(cudaMalloc(&accumulation_buffer, capacity * sizeof(float4)));
 
@@ -116,6 +117,7 @@ void RayTracer::FreeGPUResources()
     {
         cudaCheck(cudaFree(sample_buffer[i]));
         g_buffer[i].Free();
+        h_buffer[i].Free();
     }
     cudaCheck(cudaFree(accumulation_buffer));
 
@@ -152,10 +154,9 @@ void RayTracer::Resize(int32 width, int32 height)
     for (int32 i = 0; i < 2; ++i)
     {
         cudaCheck(cudaFree(sample_buffer[i]));
-        g_buffer[i].Free();
-
         cudaCheck(cudaMalloc(&sample_buffer[i], capacity * sizeof(float4)));
-        g_buffer[i].Init(capacity);
+        g_buffer[i].Resize(capacity);
+        h_buffer[i].Resize(capacity);
     }
     cudaCheck(cudaFree(accumulation_buffer));
     cudaCheck(cudaMalloc(&accumulation_buffer, capacity * sizeof(float4)));
