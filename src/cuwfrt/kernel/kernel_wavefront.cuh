@@ -69,8 +69,8 @@ __KERNEL__ void GeneratePrimaryRays(
     sample_buffer[index] = Vec4(0);
 
     g_buffer.position[index] = Vec4(0);
-    g_buffer.albedo[index] = Vec3(0);
-    g_buffer.normal[index] = Vec3(0);
+    g_buffer.albedo[index] = Vec4(0);
+    g_buffer.normal[index] = Vec4(0);
 }
 
 // Trace rays and find closest intersection
@@ -154,8 +154,8 @@ __KERNEL__ void Closest(
     if (bounce == 0)
     {
         g_buffer.position[pixel_index] = Vec4(isect.point, isect.t);
-        g_buffer.albedo[pixel_index] = mat->Albedo(&scene, isect, wo);
-        g_buffer.normal[pixel_index] = isect.shading_normal;
+        g_buffer.normal[pixel_index] = Vec4(isect.shading_normal, isect.prim);
+        g_buffer.albedo[pixel_index] = Vec4(mat->Albedo(&scene, isect, wo), 0);
     }
 
     if (Vec3 Le = mat->Le(&scene, isect, wo); Le != Vec3(0))
@@ -276,17 +276,17 @@ __KERNEL__ void Finalize(
 
     const int32 index = y * res.x + x;
 
-    Point3 position = Point3(g_buffer.position[index].x, g_buffer.position[index].y, g_buffer.position[index].z);
-    Point2i p = prev_camera.GetRasterPos(position); // Previous pixel position (can have negative)
+    Point3 p = GetVec3(g_buffer.position[index]);
+    Point2i s0 = prev_camera.GetRasterPos(p); // Previous pixel position (can have negative)
 
-    const int32 prev_index = p.x + p.y * res.x;
+    const int32 prev_index = s0.x + s0.y * res.x;
 
     // Motion vector
-    // Vec2i mv = p - Point2i(x, y);
+    // Vec2i mv = s0 - Point2i(x, y);
 
-    if (p.x >= 0 && p.x < res.x && p.y >= 0 && p.y < res.y && g_buffer.position[index].w > 0)
+    if (s0.x >= 0 && s0.x < res.x && s0.y >= 0 && s0.y < res.y)
     {
-        if (prev_g_buffer.position[prev_index].w > 0)
+        if (g_buffer.position[index].w > 0 && prev_g_buffer.position[prev_index].w > 0)
         {
             sample_buffer[index] = Lerp(prev_sample_buffer[prev_index], sample_buffer[index], 0.2f);
         }

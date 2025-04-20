@@ -77,6 +77,10 @@ static void Render()
         tr = clock::now() - t0;
     }
 
+    static bool collapsed = false;
+    if (Input::IsKeyPressed(GLFW_KEY_GRAVE_ACCENT)) collapsed = !collapsed;
+    ImGui::SetNextWindowCollapsed(collapsed, ImGuiCond_None);
+
     ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
     if (ImGui::Begin("cuwfrt", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
@@ -112,6 +116,10 @@ static void Render()
         if (ImGui::Checkbox("Render sky", &options.render_sky)) time = 0;
         if (ImGui::Combo("##", &selection, RayTracer::kernel_names, RayTracer::num_kernels)) time = 0;
     }
+
+    if (!collapsed && ImGui::IsWindowCollapsed()) collapsed = true;
+    if (collapsed && !ImGui::IsWindowCollapsed()) collapsed = false;
+
     ImGui::End();
 
     if (time == 0)
@@ -166,7 +174,7 @@ static void BuildScene()
     MaterialIndex glass = scene.AddMaterial<DielectricMaterial>(1.5f, Vec3(1.0f));
     SetLoaderFallbackMaterial(glass);
 
-    LoadModel(scene, "res/lucy.obj", Transform(Vec3(0.66f, 0.28f, -0.33f), identity, Vec3(0.5f)));
+    // LoadModel(scene, "res/lucy.obj", Transform(Vec3(0.66f, 0.28f, -0.33f), identity, Vec3(0.5f)));
 
     // LoadModel(scene, "Z:/dev/cpp_workspace/Bulbit/res/sponza/glTF/Sponza.gltf", Transform(Vec3(0, 0, 0), identity,
     // Vec3(0.01f)));
@@ -339,7 +347,7 @@ static void Init()
     player.speed = 1.5f;
     player.damping = 100.0f;
 
-    options.max_bounces = 5;
+    options.max_bounces = 3;
 
     raytracer = new RayTracer(window, &scene, &camera, &options);
 

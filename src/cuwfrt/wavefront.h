@@ -103,32 +103,32 @@ struct RayQueues
 
 struct GBuffer
 {
-    Vec4* position; // depth in w
-    Vec3* albedo;
-    Vec3* normal;
+    Vec4* position; // w: linear depth
+    Vec4* normal;   // w: triangle index
+    Vec4* albedo;   // w: material index
 
     void Init(int32 capacity)
     {
         cudaCheck(cudaMalloc(&position, capacity * sizeof(decltype(*position))));
-        cudaCheck(cudaMalloc(&albedo, capacity * sizeof(decltype(*albedo))));
         cudaCheck(cudaMalloc(&normal, capacity * sizeof(decltype(*normal))));
+        cudaCheck(cudaMalloc(&albedo, capacity * sizeof(decltype(*albedo))));
     }
 
     void Free()
     {
         cudaCheck(cudaFree(position));
-        cudaCheck(cudaFree(albedo));
         cudaCheck(cudaFree(normal));
+        cudaCheck(cudaFree(albedo));
     }
 
     void Resize(int32 capacity)
     {
         cudaCheck(cudaFree(position));
-        cudaCheck(cudaFree(albedo));
         cudaCheck(cudaFree(normal));
+        cudaCheck(cudaFree(albedo));
         cudaCheck(cudaMalloc(&position, capacity * sizeof(decltype(*position))));
-        cudaCheck(cudaMalloc(&albedo, capacity * sizeof(decltype(*albedo))));
         cudaCheck(cudaMalloc(&normal, capacity * sizeof(decltype(*normal))));
+        cudaCheck(cudaMalloc(&albedo, capacity * sizeof(decltype(*albedo))));
     }
 };
 

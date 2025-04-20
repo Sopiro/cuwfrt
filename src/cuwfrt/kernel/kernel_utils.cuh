@@ -36,4 +36,9 @@ inline __GPU__ Vec4 ToSRGB(Vec4 color)
     return Vec4(std::pow(color.x, 1 / 2.2f), std::pow(color.y, 1 / 2.2f), std::pow(color.z, 1 / 2.2f), 1.0f);
 }
 
+inline __GPU__ Vec3 GetVec3(Vec4 v)
+{
+    return Vec3(v.x, v.y, v.z);
+}
+
 } // namespace cuwfrt
