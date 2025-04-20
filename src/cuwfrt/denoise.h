@@ -8,8 +8,8 @@ namespace cuwfrt
 
 struct HistoryBuffer
 {
-    Vec4* color;   // w: history length
-    Vec2* moments; // x: l, y: l^2
+    Vec4* color;   // 1th filtered illumination
+    Vec4* moments; // x: l, y: l^2, z: variance, w: history length
 
     void Init(int32 capacity)
     {

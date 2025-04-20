@@ -78,9 +78,9 @@ __KERNEL__ void FilterTemporal(
     if (reprojectable)
     {
         alpha = 0.2f;
-        moments0 = prev_h_buffer.moments[index0];
+        moments0 = GetVec2(prev_h_buffer.moments[index0]);
         color0 = prev_h_buffer.color[index0];
-        history = color0.w + 1;
+        history = prev_h_buffer.moments[index0].w + 1;
     }
 
     // Estimate variance with exponentially averaged the luminance moments
@@ -93,8 +93,7 @@ __KERNEL__ void FilterTemporal(
     // Temporal filter the illumination 4.1
     sample_buffer[index] = Lerp(color0, sample_buffer[index], alpha);
 
-    h_buffer.moments[index] = moments;
-    h_buffer.color[index].w = history;
+    h_buffer.moments[index] = Vec4(moments.x, moments.y, variance, history);
 }
 
 __KERNEL__ void EstimateVariance(
@@ -115,7 +114,17 @@ __KERNEL__ void EstimateVariance(
 
     const int32 index = y * res.x + x;
 
-    frame_buffer[index] = ToSRGB(Vec4(h_buffer.color[index].w, h_buffer.color[index].w, h_buffer.color[index].w, 1));
+    int32 history = int32(h_buffer.color[index].w);
+    frame_buffer[index] = ToSRGB(Vec4(history / 64.0f, history / 64.0f, history / 64.0f, 1));
+
+    if (history > 3)
+    {
+        // Just go with temporally estimated variance
+        return;
+    }
+
+    // Too short history length
+    // We estimate variance spatially 4.2
 }
 
 } // namespace cuwfrt
