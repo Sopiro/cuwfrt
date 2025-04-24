@@ -124,16 +124,16 @@ __KERNEL__ void FilterTemporal(
     h_buffer.moments[index] = Vec4(moments.x, moments.y, variance, history);
 }
 
-__KERNEL__ void EstimateVariance(GBuffer g_buffer, HistoryBuffer h_buffer, Point2i res)
+__KERNEL__ void EstimateVariance(GBuffer g_buffer, HistoryBuffer h_buffer, HistoryBuffer out_h_buffer, Point2i res)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     if (x >= res.x || y >= res.y) return;
-
     const int32 index = y * res.x + x;
 
-    int32 history = int32(h_buffer.moments[index].w);
+    out_h_buffer.moments[index] = h_buffer.moments[index];
 
+    int32 history = int32(h_buffer.moments[index].w);
     if (history > 3)
     {
         // Just go with temporally estimated variance
@@ -207,7 +207,42 @@ __KERNEL__ void EstimateVariance(GBuffer g_buffer, HistoryBuffer h_buffer, Point
     // Spatially estimated variance
     Float variance = fmax(0.0f, sum_moments.y - sum_moments.x * sum_moments.x);
 
-    h_buffer.moments[index].z = variance;
+    out_h_buffer.moments[index].z = variance;
+}
+
+__KERNEL__ void FilterVariance(HistoryBuffer h_buffer, HistoryBuffer out_h_buffer, Point2i res)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x >= res.x || y >= res.y) return;
+    const int32 index = y * res.x + x;
+
+    //  Eq. 5 Filter variance using 3x3 gaussian kernel
+
+    constexpr Float gaussian3x3[] = {
+        1 / 16.0f, 1 / 8.0f, 1 / 16.0f, 1 / 8.0f, 1 / 4.0f, 1 / 8.0f, 1 / 16.0f, 1 / 8.0f, 1 / 16.0f,
+    };
+
+    Float variance = 0;
+
+    const int32 r = 1;
+    for (int32 j = -r; j <= r; ++j)
+    {
+        for (int32 i = -r; i <= r; ++i)
+        {
+            Point2i q(x + i, y + j);
+            if (q.x < 0 || q.x >= res.x || q.y < 0 || q.y >= res.y)
+            {
+                continue;
+            }
+
+            int32 index_q = q.x + q.y * res.x;
+            int32 kernel_index = (j + 1) * 3 + (i + 1);
+            variance += gaussian3x3[kernel_index] * h_buffer.moments[index_q].z;
+        }
+    }
+
+    out_h_buffer.moments[index].z = variance;
 }
 
 } // namespace cuwfrt

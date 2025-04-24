@@ -307,7 +307,9 @@ void RayTracer::Denoise()
         h_buffer[1 - frame_index], h_buffer[frame_index]
     );
 
-    EstimateVariance<<<blocks, threads>>>(g_buffer[frame_index], h_buffer[frame_index], res);
+    EstimateVariance<<<blocks, threads>>>(g_buffer[frame_index], h_buffer[frame_index], h_buffer[1 - frame_index], res);
+
+    FilterVariance<<<blocks, threads>>>(h_buffer[1 - frame_index], h_buffer[frame_index], res);
 }
 
 void RayTracer::DrawFrame()
