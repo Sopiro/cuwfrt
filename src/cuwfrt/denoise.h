@@ -35,7 +35,7 @@ struct HistoryBuffer
 struct GBuffer
 {
     Vec4* position; // w: camera space linear depth
-    Vec4* normal;
+    Vec4* normal;   // w: primitive index
     Vec4* albedo;
 
     void Init(int32 capacity)

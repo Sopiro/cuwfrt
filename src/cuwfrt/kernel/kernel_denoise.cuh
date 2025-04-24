@@ -45,6 +45,34 @@ inline __GPU__ bool ValidateReprojection(
     return true;
 }
 
+inline __GPU__ Float EdgeStoppingWeight(Point2i p, Point2i q, Float z_p, Float z_q, Vec2 dzdp, Vec3 n_p, Vec3 n_q)
+{
+    constexpr Float sigma_z = 1;
+    constexpr Float sigma_n = 128;
+
+    Float w_z = abs(z_p - z_q) / (sigma_z * abs(Dot(dzdp, Vec2(p - q))) + 1e-9);
+
+    Float w_n = powf(fmax(0.0f, Dot(n_p, n_q)), sigma_n);
+
+    return w_n * exp(-w_z);
+}
+
+inline __GPU__ Float
+EdgeStoppingWeight(Point2i p, Point2i q, Float z_p, Float z_q, Vec2 dzdp, Vec3 n_p, Vec3 n_q, Float l_p, Float l_q, Float var_p)
+{
+    constexpr Float sigma_z = 1;
+    constexpr Float sigma_n = 128;
+    constexpr Float sigma_l = 4;
+
+    Float w_z = abs(z_p - z_q) / (sigma_z * abs(Dot(dzdp, Vec2(p - q))) + 1e-9);
+
+    Float w_n = powf(fmax(0.0f, Dot(n_p, n_q)), sigma_n);
+
+    Float w_l = abs(l_p - l_q) / (sigma_l * sqrt(var_p) + 1e-9);
+
+    return w_n * exp(-(w_z + w_l));
+}
+
 __KERNEL__ void FilterTemporal(
     Vec4* sample_buffer,
     Point2i res,
@@ -77,10 +105,10 @@ __KERNEL__ void FilterTemporal(
     bool reprojectable = ValidateReprojection(prev_g_buffer, g_buffer, res, index, p0, index0);
     if (reprojectable)
     {
-        alpha = 0.2f;
         moments0 = GetVec2(prev_h_buffer.moments[index0]);
         color0 = prev_h_buffer.color[index0];
         history = prev_h_buffer.moments[index0].w + 1;
+        alpha = 1.0f / history;
     }
 
     // Estimate variance with exponentially averaged the luminance moments
@@ -114,17 +142,85 @@ __KERNEL__ void EstimateVariance(
 
     const int32 index = y * res.x + x;
 
-    int32 history = int32(h_buffer.color[index].w);
-    frame_buffer[index] = ToSRGB(Vec4(history / 64.0f, history / 64.0f, history / 64.0f, 1));
+    int32 history = int32(h_buffer.moments[index].w);
 
     if (history > 3)
     {
+        frame_buffer[index] = ToSRGB(Vec4(h_buffer.moments[index].z, h_buffer.moments[index].z, h_buffer.moments[index].z, 1));
         // Just go with temporally estimated variance
         return;
     }
 
     // Too short history length
     // We estimate variance spatially 4.2
+
+    // Approximate depth derivatives
+    Float dzdx, dzdy;
+    if (x > 0 && x < res.x - 1)
+    {
+        Float z0 = g_buffer.position[y * res.x + (x - 1)].w;
+        Float z1 = g_buffer.position[y * res.x + (x + 1)].w;
+        dzdx = 0.5f * (z1 - z0);
+    }
+    else if (x < res.x - 1)
+    {
+        Float z = g_buffer.position[index].w;
+        Float z1 = g_buffer.position[y * res.x + (x + 1)].w;
+        dzdx = z1 - z;
+    }
+
+    if (y > 0 && y < res.y - 1)
+    {
+        Float z1 = g_buffer.position[(y - 1) * res.x + x].w;
+        Float z0 = g_buffer.position[(y + 1) * res.x + x].w;
+        dzdy = 0.5f * (z0 - z1);
+    }
+    else if (y < res.y - 1)
+    {
+        Float z = g_buffer.position[index].w;
+        Float z0 = g_buffer.position[(y + 1) * res.x + x].w;
+        dzdy = z0 - z;
+    }
+
+    Point2i p(x, y);
+    Float z_p = g_buffer.position[index].w;
+    Vec2 dzdp(dzdx, dzdy);
+    Vec3 n_p = GetVec3(g_buffer.normal[index]);
+
+    Float sum_weights = 0;
+    Vec2 sum_moments(0);
+
+    const int32 r = 3;
+    for (int32 j = -r; j <= r; ++j)
+    {
+        for (int32 i = -r; i <= r; ++i)
+        {
+            Point2i q(x + i, y + j);
+            if (q.x < 0 || q.x >= res.x || q.y < 0 || q.y >= res.y)
+            {
+                continue;
+            }
+
+            int32 index_q = q.x + q.y * res.x;
+
+            Float z_q = g_buffer.position[index_q].w;
+            Vec3 n_q = GetVec3(g_buffer.normal[index_q]);
+
+            Float w = EdgeStoppingWeight(p, q, z_p, z_q, dzdp, n_p, n_q);
+
+            sum_weights += w;
+            sum_moments += w * GetVec2(h_buffer.moments[index_q]);
+        }
+    }
+
+    sum_moments /= sum_weights;
+
+    // Spatially estimated variance
+    Float variance = fmax(0.0f, sum_moments.y - sum_moments.x * sum_moments.x);
+
+    h_buffer.moments[index].z = variance;
+
+    frame_buffer[index] = ToSRGB(Vec4(variance, variance, variance, 1));
 }
 
 } // namespace cuwfrt
