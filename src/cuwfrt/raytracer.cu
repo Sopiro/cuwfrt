@@ -299,35 +299,15 @@ void RayTracer::RayTraceWavefront()
 
 void RayTracer::Denoise()
 {
-    {
-        const dim3 threads(16, 16);
-        const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        FilterTemporal<<<blocks, threads>>>(
-            sample_buffer[frame_index], res, g_buffer[1 - frame_index], g_buffer[frame_index], g_camera[1 - frame_index],
-            h_buffer[1 - frame_index], h_buffer[frame_index]
-        );
-    }
+    const dim3 threads(16, 16);
+    const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    {
-        const dim3 threads(16, 16);
-        const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-        EstimateVariance<<<blocks, threads>>>(
-            frame_buffer, sample_buffer[1 - frame_index], sample_buffer[frame_index], res, g_buffer[1 - frame_index],
-            g_buffer[frame_index], g_camera[1 - frame_index], h_buffer[1 - frame_index], h_buffer[frame_index]
-        );
-    }
+    FilterTemporal<<<blocks, threads>>>(
+        sample_buffer[frame_index], res, g_buffer[1 - frame_index], g_buffer[frame_index], g_camera[1 - frame_index],
+        h_buffer[1 - frame_index], h_buffer[frame_index]
+    );
 
-    // // Finalize samples
-    // {
-    //     const dim3 threads(16, 16);
-    //     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
-    //     Finalize<<<blocks, threads>>>(
-    //         frame_buffer, accumulation_buffer, sample_buffer[1 - frame_index], sample_buffer[frame_index], res,
-    //         g_buffer[1 - frame_index], g_buffer[frame_index], g_camera[1 - frame_index], ++spp
-    //     );
-    //     cudaCheckLastError();
-    //     cudaCheck(cudaDeviceSynchronize());
-    // }
+    EstimateVariance<<<blocks, threads>>>(g_buffer[frame_index], h_buffer[frame_index], res);
 }
 
 void RayTracer::DrawFrame()

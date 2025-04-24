@@ -124,17 +124,7 @@ __KERNEL__ void FilterTemporal(
     h_buffer.moments[index] = Vec4(moments.x, moments.y, variance, history);
 }
 
-__KERNEL__ void EstimateVariance(
-    Vec4* frame_buffer,
-    Vec4* prev_sample_buffer,
-    Vec4* sample_buffer,
-    Point2i res,
-    GBuffer prev_g_buffer,
-    GBuffer g_buffer,
-    Camera prev_camera,
-    HistoryBuffer prev_h_buffer,
-    HistoryBuffer h_buffer
-)
+__KERNEL__ void EstimateVariance(GBuffer g_buffer, HistoryBuffer h_buffer, Point2i res)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -146,7 +136,6 @@ __KERNEL__ void EstimateVariance(
 
     if (history > 3)
     {
-        frame_buffer[index] = ToSRGB(Vec4(h_buffer.moments[index].z, h_buffer.moments[index].z, h_buffer.moments[index].z, 1));
         // Just go with temporally estimated variance
         return;
     }
@@ -219,8 +208,6 @@ __KERNEL__ void EstimateVariance(
     Float variance = fmax(0.0f, sum_moments.y - sum_moments.x * sum_moments.x);
 
     h_buffer.moments[index].z = variance;
-
-    frame_buffer[index] = ToSRGB(Vec4(variance, variance, variance, 1));
 }
 
 } // namespace cuwfrt
