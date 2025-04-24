@@ -73,6 +73,58 @@ EdgeStoppingWeight(Point2i p, Point2i q, Float z_p, Float z_q, Vec2 dzdp, Vec3 n
     return w_n * exp(-(w_z + w_l));
 }
 
+__KERNEL__ void PrepareDenoise(Vec4* frame_buffer, Vec4* sample_buffer, GBuffer g_buffer, HistoryBuffer h_buffer, Point2i res)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x >= res.x || y >= res.y) return;
+
+    const int32 index = y * res.x + x;
+
+    // Approximate depth derivatives
+    Float dzdx = 0;
+    Float dzdy = 0;
+
+    if (x > 0 && x < res.x - 1)
+    {
+        Float z0 = g_buffer.position[y * res.x + (x - 1)].w;
+        Float z1 = g_buffer.position[y * res.x + (x + 1)].w;
+        dzdx = 0.5f * (z1 - z0);
+    }
+    else if (x < res.x - 1)
+    {
+        Float z = g_buffer.position[index].w;
+        Float z1 = g_buffer.position[y * res.x + (x + 1)].w;
+        dzdx = z1 - z;
+    }
+
+    if (y > 0 && y < res.y - 1)
+    {
+        Float z1 = g_buffer.position[(y - 1) * res.x + x].w;
+        Float z0 = g_buffer.position[(y + 1) * res.x + x].w;
+        dzdy = 0.5f * (z0 - z1);
+    }
+    else if (y < res.y - 1)
+    {
+        Float z = g_buffer.position[index].w;
+        Float z0 = g_buffer.position[(y + 1) * res.x + x].w;
+        dzdy = z0 - z;
+    }
+
+    // Demomuldate albedo. We are going to filter the illumination only
+    if (g_buffer.albedo[index] != Vec4(0))
+    {
+        sample_buffer[index] /= g_buffer.albedo[index];
+    }
+    else
+    {
+        frame_buffer[index] = sample_buffer[index];
+        sample_buffer[index] = Vec4(0);
+    }
+
+    g_buffer.dzdp[index] = Vec2(dzdx, dzdy);
+}
+
 __KERNEL__ void FilterTemporal(
     Vec4* sample_buffer,
     Point2i res,
@@ -93,10 +145,7 @@ __KERNEL__ void FilterTemporal(
     Point2i p0 = prev_camera.GetRasterPos(GetVec3(g_buffer.position[index]));
     int32 index0 = p0.x + p0.y * res.x;
 
-    // Demomuldate albedo. We are going to filter the illumination only
-    sample_buffer[index] /= g_buffer.albedo[index];
-
-    int32 history = 0;
+    int32 history = 1;
     Float alpha = 1;
     Vec2 moments0(0);
     Vec4 color0(0);
@@ -108,7 +157,7 @@ __KERNEL__ void FilterTemporal(
         moments0 = GetVec2(prev_h_buffer.moments[index0]);
         color0 = prev_h_buffer.color[index0];
         history = prev_h_buffer.moments[index0].w + 1;
-        alpha = 1.0f / history;
+        alpha = 0.2f;
     }
 
     // Estimate variance with exponentially averaged the luminance moments
@@ -143,37 +192,9 @@ __KERNEL__ void EstimateVariance(GBuffer g_buffer, HistoryBuffer h_buffer, Histo
     // Too short history length
     // We estimate variance spatially 4.2
 
-    // Approximate depth derivatives
-    Float dzdx, dzdy;
-    if (x > 0 && x < res.x - 1)
-    {
-        Float z0 = g_buffer.position[y * res.x + (x - 1)].w;
-        Float z1 = g_buffer.position[y * res.x + (x + 1)].w;
-        dzdx = 0.5f * (z1 - z0);
-    }
-    else if (x < res.x - 1)
-    {
-        Float z = g_buffer.position[index].w;
-        Float z1 = g_buffer.position[y * res.x + (x + 1)].w;
-        dzdx = z1 - z;
-    }
-
-    if (y > 0 && y < res.y - 1)
-    {
-        Float z1 = g_buffer.position[(y - 1) * res.x + x].w;
-        Float z0 = g_buffer.position[(y + 1) * res.x + x].w;
-        dzdy = 0.5f * (z0 - z1);
-    }
-    else if (y < res.y - 1)
-    {
-        Float z = g_buffer.position[index].w;
-        Float z0 = g_buffer.position[(y + 1) * res.x + x].w;
-        dzdy = z0 - z;
-    }
-
     Point2i p(x, y);
     Float z_p = g_buffer.position[index].w;
-    Vec2 dzdp(dzdx, dzdy);
+    Vec2 dzdp = g_buffer.dzdp[index];
     Vec3 n_p = GetVec3(g_buffer.normal[index]);
 
     Float sum_weights = 0;
@@ -219,13 +240,19 @@ __KERNEL__ void FilterVariance(HistoryBuffer h_buffer, HistoryBuffer out_h_buffe
 
     //  Eq. 5 Filter variance using 3x3 gaussian kernel
 
-    constexpr Float gaussian3x3[] = {
-        1 / 16.0f, 1 / 8.0f, 1 / 16.0f, 1 / 8.0f, 1 / 4.0f, 1 / 8.0f, 1 / 16.0f, 1 / 8.0f, 1 / 16.0f,
+    // clang-format off
+    constexpr int32 s = 3;
+    constexpr Float gaussian3x3[] =
+    {
+        1 / 16.0f, 1 / 8.0f, 1 / 16.0f,
+        1 / 8.0f, 1 / 4.0f, 1 / 8.0f,
+        1 / 16.0f, 1 / 8.0f, 1 / 16.0f,
     };
+    // clang-format on
 
     Float variance = 0;
 
-    const int32 r = 1;
+    constexpr int32 r = 1;
     for (int32 j = -r; j <= r; ++j)
     {
         for (int32 i = -r; i <= r; ++i)
@@ -237,12 +264,108 @@ __KERNEL__ void FilterVariance(HistoryBuffer h_buffer, HistoryBuffer out_h_buffe
             }
 
             int32 index_q = q.x + q.y * res.x;
-            int32 kernel_index = (j + 1) * 3 + (i + 1);
+            int32 kernel_index = (j + r) * s + (i + r);
             variance += gaussian3x3[kernel_index] * h_buffer.moments[index_q].z;
         }
     }
 
     out_h_buffer.moments[index].z = variance;
+}
+
+__KERNEL__ void FilterSpatial(
+    Vec4* in_sample_buffer,
+    Vec4* out_sample_buffer,
+    Point2i res,
+    int32 step,
+    GBuffer g_buffer,
+    HistoryBuffer in_h_buffer,
+    HistoryBuffer out_h_buffer
+)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x >= res.x || y >= res.y) return;
+    const int32 index = y * res.x + x;
+
+    if (g_buffer.position[index].w <= 0)
+    {
+        return;
+    }
+
+    Point2i p(x, y);
+    Float z_p = g_buffer.position[index].w;
+    Vec2 dzdp = g_buffer.dzdp[index];
+    Vec3 n_p = GetVec3(g_buffer.normal[index]);
+    Float l_p = Luminance(in_sample_buffer[index]);
+    Float var_p = in_h_buffer.moments[index].z;
+
+    // clang-format off
+    constexpr int32 s = 5;
+    constexpr Float h[s * s] =
+    {
+        0.00390625f, 0.015625f,   0.0234375f,  0.015625f,   0.00390625f,
+        0.015625f,   0.0625f,     0.09375f,    0.0625f,     0.015625f,
+        0.0234375f,  0.09375f,    0.140625f,   0.09375f,    0.0234375f,
+        0.015625f,   0.0625f,     0.09375f,    0.0625f,     0.015625f,
+        0.00390625f, 0.015625f,   0.0234375f,  0.015625f,   0.00390625f
+    };
+    // clang-format on
+
+    Float sum_weights = 0;
+    Vec4 sum_l(0);
+
+    // a-trous wavelet filter
+    constexpr int32 r = 2;
+    for (int32 j = -r; j <= r; ++j)
+    {
+        for (int32 i = -r; i <= r; ++i)
+        {
+            Point2i q(x + i * step, y + j * step);
+            if (q.x < 0 || q.x >= res.x || q.y < 0 || q.y >= res.y)
+            {
+                continue;
+            }
+
+            int32 index_q = q.x + q.y * res.x;
+
+            Float z_q = g_buffer.position[index_q].w;
+            Vec3 n_q = GetVec3(g_buffer.normal[index_q]);
+            Float l_q = Luminance(in_sample_buffer[index_q]);
+
+            int32 kernel_index = (j + r) * s + (i + r);
+            Float w = h[kernel_index] * EdgeStoppingWeight(p, q, z_p, z_q, dzdp, n_p, n_q, l_p, l_q, var_p);
+
+            sum_weights += w;
+            sum_l += w * in_sample_buffer[index_q];
+        }
+    }
+
+    sum_l /= sum_weights;
+
+    out_sample_buffer[index] = sum_l;
+
+    if (step == 1)
+    {
+        in_h_buffer.color[index] = sum_l;
+    }
+}
+
+__KERNEL__ void FinalizeDenoise(Vec4* frame_buffer, Vec4* sample_buffer, Point2i res, GBuffer g_buffer, HistoryBuffer h_buffer)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x >= res.x || y >= res.y) return;
+    const int32 index = y * res.x + x;
+
+    // Remodulate albedo and apply tone mapping
+    if (g_buffer.albedo[index] != Vec4(0))
+    {
+        frame_buffer[index] = ToSRGB(sample_buffer[index] * g_buffer.albedo[index]);
+    }
+    else
+    {
+        frame_buffer[index] = ToSRGB(frame_buffer[index]);
+    }
 }
 
 } // namespace cuwfrt

@@ -37,12 +37,14 @@ struct GBuffer
     Vec4* position; // w: camera space linear depth
     Vec4* normal;   // w: primitive index
     Vec4* albedo;
+    Vec2* dzdp;     // screen space depth derivates dzdx, dzdy
 
     void Init(int32 capacity)
     {
         cudaCheck(cudaMalloc(&position, capacity * sizeof(decltype(*position))));
         cudaCheck(cudaMalloc(&normal, capacity * sizeof(decltype(*normal))));
         cudaCheck(cudaMalloc(&albedo, capacity * sizeof(decltype(*albedo))));
+        cudaCheck(cudaMalloc(&dzdp, capacity * sizeof(decltype(*dzdp))));
     }
 
     void Free()
@@ -50,6 +52,7 @@ struct GBuffer
         cudaCheck(cudaFree(position));
         cudaCheck(cudaFree(normal));
         cudaCheck(cudaFree(albedo));
+        cudaCheck(cudaFree(dzdp));
     }
 
     void Resize(int32 capacity)
@@ -57,9 +60,11 @@ struct GBuffer
         cudaCheck(cudaFree(position));
         cudaCheck(cudaFree(normal));
         cudaCheck(cudaFree(albedo));
+        cudaCheck(cudaFree(dzdp));
         cudaCheck(cudaMalloc(&position, capacity * sizeof(decltype(*position))));
         cudaCheck(cudaMalloc(&normal, capacity * sizeof(decltype(*normal))));
         cudaCheck(cudaMalloc(&albedo, capacity * sizeof(decltype(*albedo))));
+        cudaCheck(cudaMalloc(&dzdp, capacity * sizeof(decltype(*dzdp))));
     }
 };
 

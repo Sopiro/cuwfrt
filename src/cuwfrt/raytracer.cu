@@ -302,6 +302,10 @@ void RayTracer::Denoise()
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
+    PrepareDenoise<<<blocks, threads>>>(
+        frame_buffer, sample_buffer[frame_index], g_buffer[frame_index], h_buffer[frame_index], res
+    );
+
     FilterTemporal<<<blocks, threads>>>(
         sample_buffer[frame_index], res, g_buffer[1 - frame_index], g_buffer[frame_index], g_camera[1 - frame_index],
         h_buffer[1 - frame_index], h_buffer[frame_index]
@@ -310,6 +314,26 @@ void RayTracer::Denoise()
     EstimateVariance<<<blocks, threads>>>(g_buffer[frame_index], h_buffer[frame_index], h_buffer[1 - frame_index], res);
 
     FilterVariance<<<blocks, threads>>>(h_buffer[1 - frame_index], h_buffer[frame_index], res);
+
+    const int32 atrous_iterations = 5;
+
+    int32 current_index = frame_index;
+    for (int32 i = 0; i < atrous_iterations; ++i)
+    {
+        int32 step = 1 << i;
+        FilterSpatial<<<blocks, threads>>>(
+            sample_buffer[current_index], sample_buffer[1 - current_index], res, step, g_buffer[frame_index],
+            h_buffer[current_index], h_buffer[1 - current_index]
+        );
+
+        current_index = 1 - current_index;
+    }
+
+    FinalizeDenoise<<<blocks, threads>>>(
+        frame_buffer, sample_buffer[1 - current_index], res, g_buffer[frame_index], h_buffer[frame_index]
+    );
+
+    cudaCheck(cudaDeviceSynchronize());
 }
 
 void RayTracer::DrawFrame()

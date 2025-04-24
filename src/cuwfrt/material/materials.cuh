@@ -54,7 +54,7 @@ public:
 
     __GPU__ Vec3 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
     {
-        return Vec3(1);
+        return Vec3(0);
     }
 
     Vec3 emission;
