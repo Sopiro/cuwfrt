@@ -128,7 +128,7 @@ static void Render()
         t0 = clock::now();
     }
 
-    camera = Camera(player.position, GetForward(), y_axis, vfov, aperture, focus_dist, window->GetWindowSize(), 0.0f);
+    camera = Camera(player.position, GetForward(), y_axis, vfov, aperture, focus_dist, window->GetWindowSize(), 0.1f);
     if (time < max_samples)
     {
         if (selection == (RayTracer::num_kernels - 1))

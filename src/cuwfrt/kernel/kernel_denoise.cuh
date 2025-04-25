@@ -73,7 +73,7 @@ EdgeStoppingWeight(Point2i p, Point2i q, Float z_p, Float z_q, Vec2 dzdp, Vec3 n
     return w_n * exp(-(w_z + w_l));
 }
 
-__KERNEL__ void PrepareDenoise(Vec4* frame_buffer, Vec4* sample_buffer, GBuffer g_buffer, HistoryBuffer h_buffer, Point2i res)
+__KERNEL__ void PrepareDenoise(Vec4* sample_buffer, GBuffer g_buffer, HistoryBuffer h_buffer, Point2i res)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -115,10 +115,13 @@ __KERNEL__ void PrepareDenoise(Vec4* frame_buffer, Vec4* sample_buffer, GBuffer 
     if (g_buffer.albedo[index] != Vec4(0))
     {
         sample_buffer[index] /= g_buffer.albedo[index];
+        g_buffer.albedo[index].w = 1;
     }
     else
     {
-        frame_buffer[index] = sample_buffer[index];
+        g_buffer.albedo[index] = sample_buffer[index];
+        g_buffer.albedo[index].w = 0;
+
         sample_buffer[index] = Vec4(0);
     }
 
@@ -314,6 +317,9 @@ __KERNEL__ void FilterSpatial(
     Float sum_weights = 0;
     Vec4 sum_l(0);
 
+    // Float sum_weights2 = 0;
+    // Float sum_var(0);
+
     // a-trous wavelet filter
     constexpr int32 r = 2;
     for (int32 j = -r; j <= r; ++j)
@@ -337,12 +343,17 @@ __KERNEL__ void FilterSpatial(
 
             sum_weights += w;
             sum_l += w * in_sample_buffer[index_q];
+
+            // sum_weights2 += w * w;
+            // sum_var += w * w * in_h_buffer.moments[index_q].z;
         }
     }
 
     sum_l /= sum_weights;
+    // sum_var /= sum_weights2;
 
     out_sample_buffer[index] = sum_l;
+    // out_h_buffer.moments[index].z = sum_var;
 
     if (step == 1)
     {
@@ -350,7 +361,7 @@ __KERNEL__ void FilterSpatial(
     }
 }
 
-__KERNEL__ void FinalizeDenoise(Vec4* frame_buffer, Vec4* sample_buffer, Point2i res, GBuffer g_buffer, HistoryBuffer h_buffer)
+__KERNEL__ void FinalizeDenoise(Vec4* frame_buffer, Vec4* sample_buffer, Point2i res, GBuffer g_buffer)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -358,14 +369,19 @@ __KERNEL__ void FinalizeDenoise(Vec4* frame_buffer, Vec4* sample_buffer, Point2i
     const int32 index = y * res.x + x;
 
     // Remodulate albedo and apply tone mapping
-    if (g_buffer.albedo[index] != Vec4(0))
+    Vec4 albedo = g_buffer.albedo[index];
+
+    Vec4 color;
+    if (albedo.w)
     {
-        frame_buffer[index] = ToSRGB(sample_buffer[index] * g_buffer.albedo[index]);
+        color = sample_buffer[index] * albedo;
     }
     else
     {
-        frame_buffer[index] = ToSRGB(frame_buffer[index]);
+        color = albedo;
     }
+
+    frame_buffer[index] = ToSRGB(color);
 }
 
 } // namespace cuwfrt
