@@ -6,8 +6,8 @@
 #include "cuwfrt/shading/microfacet.h"
 #include "cuwfrt/shading/scattering.h"
 
-#include "cuwfrt/kernel/kernel_primitive.cuh"
-#include "cuwfrt/kernel/kernel_texture.cuh"
+#include "cuwfrt/kernel/device_primitive.cuh"
+#include "cuwfrt/kernel/device_texture.cuh"
 
 #include <cuda_fp16.h>
 

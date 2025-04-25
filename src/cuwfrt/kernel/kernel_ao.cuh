@@ -4,8 +4,8 @@
 
 #include "cuwfrt/raytracer.h"
 
-#include "kernel_intersect.cuh"
-#include "kernel_material.cuh"
+#include "device_intersect.cuh"
+#include "device_material.cuh"
 
 namespace cuwfrt
 {

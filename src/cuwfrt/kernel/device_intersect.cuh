@@ -1,6 +1,6 @@
 #pragma once
 
-#include "kernel_primitive.cuh"
+#include "device_primitive.cuh"
 
 #include "cuwfrt/geometry/intersection.h"
 

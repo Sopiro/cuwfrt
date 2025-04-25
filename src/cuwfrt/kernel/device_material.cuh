@@ -3,7 +3,7 @@
 #include "cuwfrt/material/materials.cuh"
 #include "cuwfrt/scene/gpu_scene.h"
 
-#include "kernel_utils.cuh"
+#include "device_utils.cuh"
 
 namespace cuwfrt
 {
