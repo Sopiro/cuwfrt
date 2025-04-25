@@ -62,7 +62,7 @@ EdgeStoppingWeight(Point2i p, Point2i q, Float z_p, Float z_q, Vec2 dzdp, Vec3 n
 {
     constexpr Float sigma_z = 1;
     constexpr Float sigma_n = 128;
-    constexpr Float sigma_l = 4;
+    constexpr Float sigma_l = 2; // 4 in paper
 
     Float w_z = abs(z_p - z_q) / (sigma_z * abs(Dot(dzdp, Vec2(p - q))) + 1e-9);
 
@@ -317,8 +317,8 @@ __KERNEL__ void FilterSpatial(
     Float sum_weights = 0;
     Vec4 sum_l(0);
 
-    // Float sum_weights2 = 0;
-    // Float sum_var(0);
+    Float sum_weights2 = 0;
+    Float sum_var(0);
 
     // a-trous wavelet filter
     constexpr int32 r = 2;
@@ -344,16 +344,16 @@ __KERNEL__ void FilterSpatial(
             sum_weights += w;
             sum_l += w * in_sample_buffer[index_q];
 
-            // sum_weights2 += w * w;
-            // sum_var += w * w * in_h_buffer.moments[index_q].z;
+            sum_weights2 += w * w;
+            sum_var += w * w * in_h_buffer.moments[index_q].z;
         }
     }
 
     sum_l /= sum_weights;
-    // sum_var /= sum_weights2;
+    sum_var /= sum_weights2;
 
     out_sample_buffer[index] = sum_l;
-    // out_h_buffer.moments[index].z = sum_var;
+    out_h_buffer.moments[index].z = sum_var;
 
     if (step == 1)
     {
@@ -361,27 +361,23 @@ __KERNEL__ void FilterSpatial(
     }
 }
 
-__KERNEL__ void FinalizeDenoise(Vec4* frame_buffer, Vec4* sample_buffer, Point2i res, GBuffer g_buffer)
+__KERNEL__ void FinalizeDenoise(Vec4* sample_buffer, Point2i res, GBuffer g_buffer)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     if (x >= res.x || y >= res.y) return;
     const int32 index = y * res.x + x;
 
-    // Remodulate albedo and apply tone mapping
+    // Remodulate albedo
     Vec4 albedo = g_buffer.albedo[index];
-
-    Vec4 color;
     if (albedo.w)
     {
-        color = sample_buffer[index] * albedo;
+        sample_buffer[index] = sample_buffer[index] * albedo;
     }
     else
     {
-        color = albedo;
+        sample_buffer[index] = albedo;
     }
-
-    frame_buffer[index] = ToSRGB(color);
 }
 
 } // namespace cuwfrt

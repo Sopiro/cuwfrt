@@ -21,9 +21,9 @@ __KERNEL__ void Accumulate(
 
     const int32 index = y * res.x + x;
 
-    accumulation_buffer[index] *= spp;
+    accumulation_buffer[index] *= spp - 1;
     accumulation_buffer[index] += sample_buffer[index];
-    accumulation_buffer[index] /= spp + 1;
+    accumulation_buffer[index] /= spp;
 
     frame_buffer[index] = ToSRGB(accumulation_buffer[index]);
 }

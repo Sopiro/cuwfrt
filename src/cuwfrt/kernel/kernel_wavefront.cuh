@@ -68,7 +68,7 @@ __KERNEL__ void GeneratePrimaryRays(
     sample_buffer[index] = Vec4(0);
 
     g_buffer.position[index] = Vec4(0);
-    g_buffer.albedo[index] = Vec4(1);
+    g_buffer.albedo[index] = Vec4(0);
     g_buffer.normal[index] = Vec4(0);
 }
 

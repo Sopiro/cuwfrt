@@ -24,7 +24,7 @@ struct Options
     bool render_sky = true;
 };
 
-using Kernel = void(Vec4*, Point2i, GPUScene, Camera, Options, int32);
+using Kernel = void(Vec4*, Point2i, GPUScene, Camera, GBuffer, Options, int32);
 
 class RayTracer
 {
@@ -35,10 +35,14 @@ public:
     RayTracer(Window* window, const Scene* scene, const Camera* camera, const Options* options);
     ~RayTracer();
 
-    void Clear();
     void RayTrace(int32 kernel_index);
     void RayTraceWavefront();
+
+    void ClearSamples();
+    void AccumulateSamples();
+
     void Denoise();
+
     void DrawFrame();
 
 private:
@@ -60,7 +64,7 @@ private:
     cudaGraphicsResource* cuda_pbo;
     Vec4* frame_buffer;
 
-    int32 frame_index;
+    int32 frame_index, output_index;
     Vec4* sample_buffer[2];
 
     Camera g_camera[2];

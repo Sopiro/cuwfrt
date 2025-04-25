@@ -163,25 +163,23 @@ void RayTracer::Resize(int32 width, int32 height)
     cudaCheck(cudaMalloc(&accumulation_buffer, capacity * sizeof(float4)));
 }
 
-void RayTracer::Clear()
-{
-    g_camera[frame_index] = *camera;
-    spp = 0;
-}
-
 void RayTracer::RayTrace(int32 kernel_index)
 {
     kernel_index = Clamp(kernel_index, 0, num_kernels - 1);
     frame_index = 1 - frame_index;
 
+    // Save camera data for motion vector calculation
+    g_camera[frame_index] = *camera;
+
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    kernels[kernel_index]<<<blocks, threads>>>(sample_buffer[frame_index], res, gpu_res.scene, *camera, *options, spp);
+    kernels[kernel_index]<<<blocks, threads>>>(
+        sample_buffer[frame_index], res, gpu_res.scene, *camera, g_buffer[frame_index], *options, spp++
+    );
     cudaCheckLastError();
 
-    Accumulate<<<blocks, threads>>>(sample_buffer[frame_index], accumulation_buffer, frame_buffer, res, spp++);
-    cudaCheckLastError();
+    output_index = frame_index;
 
     cudaCheck(cudaDeviceSynchronize());
 }
@@ -204,7 +202,7 @@ void RayTracer::RayTraceWavefront()
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
         GeneratePrimaryRays<<<blocks, threads>>>(
-            wf.active.rays, sample_buffer[frame_index], res, g_camera[frame_index], g_buffer[frame_index], spp++
+            wf.active.rays, sample_buffer[frame_index], res, *camera, g_buffer[frame_index], spp++
         );
         cudaCheckLastError();
     }
@@ -294,6 +292,24 @@ void RayTracer::RayTraceWavefront()
         }
     }
 
+    output_index = frame_index;
+
+    cudaCheck(cudaDeviceSynchronize());
+}
+
+void RayTracer::ClearSamples()
+{
+    spp = 0;
+}
+
+void RayTracer::AccumulateSamples()
+{
+    const dim3 threads(16, 16);
+    const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
+
+    Accumulate<<<blocks, threads>>>(sample_buffer[output_index], accumulation_buffer, frame_buffer, res, spp);
+    cudaCheckLastError();
+
     cudaCheck(cudaDeviceSynchronize());
 }
 
@@ -302,29 +318,29 @@ void RayTracer::Denoise()
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    PrepareDenoise<<<blocks, threads>>>(sample_buffer[frame_index], g_buffer[frame_index], h_buffer[frame_index], res);
+    PrepareDenoise<<<blocks, threads>>>(sample_buffer[output_index], g_buffer[output_index], h_buffer[output_index], res);
     cudaCheckLastError();
 
     FilterTemporal<<<blocks, threads>>>(
-        sample_buffer[frame_index], res, g_buffer[1 - frame_index], g_buffer[frame_index], g_camera[1 - frame_index],
-        h_buffer[1 - frame_index], h_buffer[frame_index]
+        sample_buffer[output_index], res, g_buffer[1 - output_index], g_buffer[output_index], g_camera[1 - output_index],
+        h_buffer[1 - output_index], h_buffer[output_index]
     );
     cudaCheckLastError();
 
-    EstimateVariance<<<blocks, threads>>>(g_buffer[frame_index], h_buffer[frame_index], h_buffer[1 - frame_index], res);
+    EstimateVariance<<<blocks, threads>>>(g_buffer[output_index], h_buffer[output_index], h_buffer[1 - output_index], res);
     cudaCheckLastError();
 
-    FilterVariance<<<blocks, threads>>>(h_buffer[1 - frame_index], h_buffer[frame_index], res);
+    FilterVariance<<<blocks, threads>>>(h_buffer[1 - output_index], h_buffer[output_index], res);
     cudaCheckLastError();
 
     const int32 atrous_iterations = 5;
 
-    int32 current_index = frame_index;
+    int32 current_index = output_index;
     for (int32 i = 0; i < atrous_iterations; ++i)
     {
         int32 step = 1 << i;
         FilterSpatial<<<blocks, threads>>>(
-            sample_buffer[current_index], sample_buffer[1 - current_index], res, step, g_buffer[frame_index],
+            sample_buffer[current_index], sample_buffer[1 - current_index], res, step, g_buffer[output_index],
             h_buffer[current_index], h_buffer[1 - current_index]
         );
         cudaCheckLastError();
@@ -332,8 +348,10 @@ void RayTracer::Denoise()
         current_index = 1 - current_index;
     }
 
-    FinalizeDenoise<<<blocks, threads>>>(frame_buffer, sample_buffer[1 - current_index], res, g_buffer[frame_index]);
+    FinalizeDenoise<<<blocks, threads>>>(sample_buffer[current_index], res, g_buffer[output_index]);
     cudaCheckLastError();
+
+    output_index = current_index;
 
     cudaCheck(cudaDeviceSynchronize());
 }

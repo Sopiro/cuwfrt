@@ -32,6 +32,7 @@ static Float aperture = 0;
 static Float focus_dist = 1;
 
 static int32 selection = RayTracer::num_kernels - 1;
+static bool denoise = true;
 
 static Vec3 GetForward()
 {
@@ -114,6 +115,7 @@ static void Render()
         }
         ImGui::Separator();
         if (ImGui::Checkbox("Render sky", &options.render_sky)) time = 0;
+        if (ImGui::Checkbox("Denoise", &denoise)) time = 0;
         if (ImGui::Combo("##", &selection, RayTracer::kernel_names, RayTracer::num_kernels)) time = 0;
     }
 
@@ -124,7 +126,7 @@ static void Render()
 
     if (time == 0)
     {
-        raytracer->Clear();
+        raytracer->ClearSamples();
         t0 = clock::now();
     }
 
@@ -134,12 +136,17 @@ static void Render()
         if (selection == (RayTracer::num_kernels - 1))
         {
             raytracer->RayTraceWavefront();
-            raytracer->Denoise();
+            if (denoise)
+            {
+                raytracer->Denoise();
+            }
         }
         else
         {
             raytracer->RayTrace(selection);
         }
+
+        raytracer->AccumulateSamples();
     }
 
     raytracer->DrawFrame();

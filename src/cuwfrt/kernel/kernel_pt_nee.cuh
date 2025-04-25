@@ -49,7 +49,7 @@ inline __GPU__ Vec3 SampleDirectLight(
 }
 
 __KERNEL__ void PathTraceNEE(
-    Vec4* __restrict__ sample_buffer, Point2i res, GPUScene scene, Camera camera, Options options, int32 seed
+    Vec4* __restrict__ sample_buffer, Point2i res, GPUScene scene, Camera camera, GBuffer g_buffer, Options options, int32 seed
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
