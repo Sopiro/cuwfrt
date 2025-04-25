@@ -11,20 +11,14 @@ namespace cuwfrt
 {
 
 __KERNEL__ void RaytraceAO(
-    Vec4* __restrict__ sample_buffer,
-    Vec4* __restrict__ frame_buffer,
-    Point2i res,
-    GPUScene scene,
-    Camera camera,
-    Options options,
-    int32 time
+    Vec4* __restrict__ sample_buffer, Point2i res, GPUScene scene, Camera camera, Options options, int32 seed
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     if (x >= res.x || y >= res.y) return;
 
-    RNG rng(Hash(x, y, time));
+    RNG rng(Hash(x, y, seed));
 
     // Generate primary ray
     Ray ray;
@@ -38,7 +32,7 @@ __KERNEL__ void RaytraceAO(
 
     if (!found_intersection)
     {
-        frame_buffer[index] = Vec4(0, 0, 0, 1);
+        sample_buffer[index] = Vec4(0, 0, 0, 1);
         return;
     }
 
@@ -65,11 +59,7 @@ __KERNEL__ void RaytraceAO(
         occlusion = Vec4(1, 1, 1, 1);
     }
 
-    sample_buffer[index] *= time;
-    sample_buffer[index] += occlusion;
-    sample_buffer[index] /= time + 1.0f;
-
-    frame_buffer[index] = ToSRGB(sample_buffer[index]);
+    sample_buffer[index] = occlusion;
 }
 
 } // namespace cuwfrt

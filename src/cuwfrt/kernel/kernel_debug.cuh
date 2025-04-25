@@ -10,13 +10,7 @@ namespace cuwfrt
 {
 
 __KERNEL__ void RenderGradient(
-    Vec4* __restrict__ sample_buffer,
-    Vec4* __restrict__ frame_buffer,
-    Point2i res,
-    GPUScene scene,
-    Camera camera,
-    Options options,
-    int32 time
+    Vec4* __restrict__ sample_buffer, Point2i res, GPUScene scene, Camera camera, Options options, int32 seed
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -24,17 +18,11 @@ __KERNEL__ void RenderGradient(
     if (x >= res.x || y >= res.y) return;
 
     int index = y * res.x + x;
-    frame_buffer[index] = Vec4(x / (float)res.x, y / (float)res.y, 128 / 255.0f, 1.0f); // Simple gradient
+    sample_buffer[index] = Vec4(x / (float)res.x, y / (float)res.y, 128 / 255.0f, 1.0f); // Simple gradient
 }
 
 __KERNEL__ void RenderNormal(
-    Vec4* __restrict__ sample_buffer,
-    Vec4* __restrict__ frame_buffer,
-    Point2i res,
-    GPUScene scene,
-    Camera camera,
-    Options options,
-    int32 time
+    Vec4* __restrict__ sample_buffer, Point2i res, GPUScene scene, Camera camera, Options options, int32 seed
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -43,7 +31,7 @@ __KERNEL__ void RenderNormal(
 
     const int32 index = y * res.x + x;
 
-    RNG rng(Hash(x, y, time));
+    RNG rng(Hash(x, y, seed));
 
     // Generate primary ray
     Ray ray;
@@ -56,16 +44,12 @@ __KERNEL__ void RenderNormal(
 
     if (found_intersection)
     {
-        sample_buffer[index] *= time;
-        sample_buffer[index] += Vec4((isect.shading_normal + 1) * 0.5, 1);
-        sample_buffer[index] /= time + 1.0f;
+        sample_buffer[index] = Vec4((isect.shading_normal + 1) * 0.5, 1);
     }
     else
     {
         sample_buffer[index] = Vec4(0, 0, 0, 1);
     }
-
-    frame_buffer[index] = ToSRGB(sample_buffer[index]);
 }
 
 } // namespace cuwfrt

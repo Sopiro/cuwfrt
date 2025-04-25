@@ -49,20 +49,14 @@ inline __GPU__ Vec3 SampleDirectLight(
 }
 
 __KERNEL__ void PathTraceNEE(
-    Vec4* __restrict__ sample_buffer,
-    Vec4* __restrict__ frame_buffer,
-    Point2i res,
-    GPUScene scene,
-    Camera camera,
-    Options options,
-    int32 spp
+    Vec4* __restrict__ sample_buffer, Point2i res, GPUScene scene, Camera camera, Options options, int32 seed
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     if (x >= res.x || y >= res.y) return;
 
-    RNG rng(Hash(x, y, spp));
+    RNG rng(Hash(x, y, seed));
 
     // Generate primary ray
     Ray ray;
@@ -146,11 +140,7 @@ __KERNEL__ void PathTraceNEE(
     }
 
     int32 index = y * res.x + x;
-    sample_buffer[index] *= spp;
-    sample_buffer[index] += Vec4(L, 0);
-    sample_buffer[index] /= spp + 1.0f;
-
-    frame_buffer[index] = ToSRGB(sample_buffer[index]);
+    sample_buffer[index] = Vec4(L, 0);
 }
 
 } // namespace cuwfrt

@@ -24,7 +24,7 @@ struct Options
     bool render_sky = true;
 };
 
-using Kernel = void(Vec4*, Vec4*, Point2i, GPUScene, Camera, Options, int32);
+using Kernel = void(Vec4*, Point2i, GPUScene, Camera, Options, int32);
 
 class RayTracer
 {

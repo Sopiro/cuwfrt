@@ -257,44 +257,4 @@ __KERNEL__ void TraceShadowRay(WavefrontShadowRay* shadow_rays, int32 shadow_ray
     }
 }
 
-// Finalize frame: average samples and apply gamma correction
-__KERNEL__ void Finalize(
-    Vec4* frame_buffer,
-    Vec4* accumulation_buffer,
-    Vec4* prev_sample_buffer,
-    Vec4* sample_buffer,
-    Point2i res,
-    GBuffer prev_g_buffer,
-    GBuffer g_buffer,
-    Camera prev_camera,
-    int32 spp
-)
-{
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
-    if (x >= res.x || y >= res.y) return;
-
-    const int32 index = y * res.x + x;
-
-    Point3 p = GetVec3(g_buffer.position[index]);
-    Point2i s0 = prev_camera.GetRasterPos(p); // Previous pixel position (can have negative)
-
-    const int32 prev_index = s0.x + s0.y * res.x;
-
-    // Motion vector
-    // Vec2i mv = s0 - Point2i(x, y);
-
-    if (s0.x >= 0 && s0.x < res.x && s0.y >= 0 && s0.y < res.y)
-    {
-        if (g_buffer.position[index].w > 0 && prev_g_buffer.position[prev_index].w > 0)
-        {
-            sample_buffer[index] = Lerp(prev_sample_buffer[prev_index], sample_buffer[index], 0.2f);
-        }
-    }
-
-    accumulation_buffer[index] += sample_buffer[index];
-
-    frame_buffer[index] = ToSRGB(accumulation_buffer[index] / spp);
-}
-
 } // namespace cuwfrt

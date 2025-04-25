@@ -11,13 +11,7 @@ namespace cuwfrt
 {
 
 __KERNEL__ void RaytraceAlbedo(
-    Vec4* __restrict__ sample_buffer,
-    Vec4* __restrict__ frame_buffer,
-    Point2i res,
-    GPUScene scene,
-    Camera camera,
-    Options options,
-    int32 time
+    Vec4* __restrict__ sample_buffer, Point2i res, GPUScene scene, Camera camera, Options options, int32 seed
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -26,7 +20,7 @@ __KERNEL__ void RaytraceAlbedo(
 
     const int32 index = y * res.x + x;
 
-    RNG rng(Hash(x, y, time));
+    RNG rng(Hash(x, y, seed));
 
     // Generate primary ray
     Ray ray;
@@ -40,16 +34,12 @@ __KERNEL__ void RaytraceAlbedo(
     if (found_intersection)
     {
         Material* m = GetMaterial(&scene, isect.prim);
-        sample_buffer[index] *= time;
-        sample_buffer[index] += Vec4(m->Albedo(&scene, isect, -ray.d), 1);
-        sample_buffer[index] /= time + 1.0f;
+        sample_buffer[index] = Vec4(m->Albedo(&scene, isect, -ray.d), 1);
     }
     else
     {
         sample_buffer[index] = Vec4(0);
     }
-
-    frame_buffer[index] = ToSRGB(sample_buffer[index]);
 }
 
 } // namespace cuwfrt
