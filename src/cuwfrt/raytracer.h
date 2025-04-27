@@ -39,7 +39,8 @@ public:
     void RayTraceWavefront();
 
     void ClearSamples();
-    void AccumulateSamples();
+    void AccumulateSamples(bool render);
+    void RenderAccumulated();
 
     void Denoise();
 
@@ -64,7 +65,7 @@ private:
     cudaGraphicsResource* cuda_pbo;
     Vec4* frame_buffer;
 
-    int32 frame_index, output_index;
+    int32 frame_index;
     Vec4* sample_buffer[2];
 
     Camera g_camera[2];

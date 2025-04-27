@@ -73,7 +73,7 @@ EdgeStoppingWeight(Point2i p, Point2i q, Float z_p, Float z_q, Vec2 dzdp, Vec3 n
     return w_n * exp(-(w_z + w_l));
 }
 
-__KERNEL__ void PrepareDenoise(Vec4* sample_buffer, GBuffer g_buffer, HistoryBuffer h_buffer, Point2i res)
+__KERNEL__ void PrepareDenoise(Vec4* in_buffer, Vec4* out_buffer, GBuffer g_buffer, HistoryBuffer h_buffer, Point2i res)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -114,22 +114,23 @@ __KERNEL__ void PrepareDenoise(Vec4* sample_buffer, GBuffer g_buffer, HistoryBuf
     // Demomuldate albedo. We are going to filter the illumination only
     if (g_buffer.albedo[index] != Vec4(0))
     {
-        sample_buffer[index] /= g_buffer.albedo[index];
+        out_buffer[index] = in_buffer[index] / g_buffer.albedo[index];
+
         g_buffer.albedo[index].w = 1;
     }
     else
     {
-        g_buffer.albedo[index] = sample_buffer[index];
-        g_buffer.albedo[index].w = 0;
+        out_buffer[index] = Vec4(0);
 
-        sample_buffer[index] = Vec4(0);
+        g_buffer.albedo[index] = in_buffer[index];
+        g_buffer.albedo[index].w = 0;
     }
 
     g_buffer.dzdp[index] = Vec2(dzdx, dzdy);
 }
 
 __KERNEL__ void FilterTemporal(
-    Vec4* sample_buffer,
+    Vec4* buffer,
     Point2i res,
     GBuffer prev_g_buffer,
     GBuffer g_buffer,
@@ -164,14 +165,14 @@ __KERNEL__ void FilterTemporal(
     }
 
     // Estimate variance with exponentially averaged the luminance moments
-    Float l = Luminance(sample_buffer[index]);
+    Float l = Luminance(buffer[index]);
     Float l2 = l * l;
 
     Vec2 moments = Lerp(moments0, Vec2(l, l2), alpha);
     Float variance = fmax(0.0f, moments.y - moments.x * moments.x);
 
     // Temporal filter the illumination 4.1
-    sample_buffer[index] = Lerp(color0, sample_buffer[index], alpha);
+    buffer[index] = Lerp(color0, buffer[index], alpha);
 
     h_buffer.moments[index] = Vec4(moments.x, moments.y, variance, history);
 }
@@ -282,7 +283,8 @@ __KERNEL__ void FilterSpatial(
     int32 step,
     GBuffer g_buffer,
     HistoryBuffer in_h_buffer,
-    HistoryBuffer out_h_buffer
+    HistoryBuffer out_h_buffer,
+    int32 spp
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -300,7 +302,9 @@ __KERNEL__ void FilterSpatial(
     Vec2 dzdp = g_buffer.dzdp[index];
     Vec3 n_p = GetVec3(g_buffer.normal[index]);
     Float l_p = Luminance(in_sample_buffer[index]);
-    Float var_p = in_h_buffer.moments[index].z;
+
+    // Scale variance by sqrt(spp) to steer the edge stopping function
+    Float var_p = sqrtf(spp) * in_h_buffer.moments[index].z;
 
     // clang-format off
     constexpr int32 s = 5;
@@ -361,7 +365,7 @@ __KERNEL__ void FilterSpatial(
     }
 }
 
-__KERNEL__ void FinalizeDenoise(Vec4* sample_buffer, Point2i res, GBuffer g_buffer)
+__KERNEL__ void FinalizeDenoise(Vec4* frame_buffer, Vec4* filtered_buffer, Point2i res, GBuffer g_buffer)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -372,11 +376,13 @@ __KERNEL__ void FinalizeDenoise(Vec4* sample_buffer, Point2i res, GBuffer g_buff
     Vec4 albedo = g_buffer.albedo[index];
     if (albedo.w)
     {
-        sample_buffer[index] = sample_buffer[index] * albedo;
+        frame_buffer[index] = ToSRGB(filtered_buffer[index] * albedo);
     }
     else
     {
-        sample_buffer[index] = albedo;
+        frame_buffer[index] = ToSRGB(albedo);
+
+        g_buffer.albedo[index] = Vec4(0);
     }
 }
 

@@ -115,7 +115,20 @@ static void Render()
         }
         ImGui::Separator();
         if (ImGui::Checkbox("Render sky", &options.render_sky)) time = 0;
-        if (ImGui::Checkbox("Denoise", &denoise)) time = 0;
+        if (ImGui::Checkbox("Denoise", &denoise))
+        {
+            if (time >= max_samples)
+            {
+                if (denoise)
+                {
+                    raytracer->Denoise();
+                }
+                else
+                {
+                    raytracer->RenderAccumulated();
+                }
+            }
+        }
         if (ImGui::Combo("##", &selection, RayTracer::kernel_names, RayTracer::num_kernels)) time = 0;
     }
 
@@ -130,23 +143,28 @@ static void Render()
         t0 = clock::now();
     }
 
-    camera = Camera(player.position, GetForward(), y_axis, vfov, aperture, focus_dist, window->GetWindowSize(), 0.1f);
     if (time < max_samples)
     {
+        camera = Camera(player.position, GetForward(), y_axis, vfov, aperture, focus_dist, window->GetWindowSize(), 0.3f);
+
         if (selection == (RayTracer::num_kernels - 1))
         {
             raytracer->RayTraceWavefront();
-            if (denoise)
-            {
-                raytracer->Denoise();
-            }
         }
         else
         {
             raytracer->RayTrace(selection);
         }
 
-        raytracer->AccumulateSamples();
+        if (denoise)
+        {
+            raytracer->AccumulateSamples(false);
+            raytracer->Denoise();
+        }
+        else
+        {
+            raytracer->AccumulateSamples(true);
+        }
     }
 
     raytracer->DrawFrame();
