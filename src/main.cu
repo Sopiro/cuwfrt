@@ -172,10 +172,10 @@ static void BuildScene()
     // MaterialIndex white = scene.AddMaterial<DiffuseMaterial>(Vec3{ .73f, .73f, .73f });
     // SetLoaderFallbackMaterial(white);
 
-    // TextureIndex basecolor = scene.AddTexture({ .is_constant = true, .color = { 1.0f, 0.766f, 0.336f } });
+    // TextureIndex basecolor = scene.AddTexture({ .type = constant_texture, .color = { 1.0f, 0.766f, 0.336f } });
     // Float metallic = 1;
     // Float roughness = 0.2f;
-    // TextureIndex arm = scene.AddTexture({ .is_constant = true, .color = { 0, roughness, metallic } });
+    // TextureIndex arm = scene.AddTexture({ .type = constant_texture, .color = { 0, roughness, metallic } });
     // MaterialIndex gold = scene.AddMaterial<PBRMaterial>(basecolor, arm, arm);
     // SetLoaderFallbackMaterial(gold);
 

@@ -11,19 +11,28 @@ using namespace alzartak;
 Texture::Texture(const TextureDesc& td)
 {
     Image4 image;
-    if (td.is_constant)
+    switch (td.type)
+    {
+    case constant_texture:
     {
         image = Image4(1, 1);
         image[0] = Vec4(td.color, 1);
     }
-    else
+    break;
+    case image_texture:
     {
         image = alzartak::ReadImage4(td.filename, td.non_color);
         if (!image)
         {
+            std::cout << "Faild to read texture: " << td.filename << std::endl;
             image = Image4(1, 1);
             image[0] = Vec4(1, 0, 1, 1);
         }
+    }
+    break;
+    default:
+        WakAssert(false);
+        break;
     }
 
     // Create CUDA array and texture objext

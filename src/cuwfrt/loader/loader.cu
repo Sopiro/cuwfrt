@@ -63,11 +63,12 @@ static void LoadMaterials(Scene& scene, tinygltf::Model& model)
                 tinygltf::Texture& texture = model.textures[pbr.baseColorTexture.index];
                 tinygltf::Image& image = model.images[texture.source];
 
-                basecolor_texture = scene.AddTexture({ .filename = g_folder + image.uri, .non_color = false });
+                basecolor_texture =
+                    scene.AddTexture({ .type = image_texture, .filename = g_folder + image.uri, .non_color = false });
             }
             else
             {
-                basecolor_texture = scene.AddTexture({ .is_constant = true, .color = basecolor_factor });
+                basecolor_texture = scene.AddTexture({ .type = constant_texture, .color = basecolor_factor });
             }
         }
 
@@ -78,13 +79,15 @@ static void LoadMaterials(Scene& scene, tinygltf::Model& model)
                 tinygltf::Texture& texture = model.textures[pbr.metallicRoughnessTexture.index];
                 tinygltf::Image& image = model.images[texture.source];
 
-                metallic_texture = scene.AddTexture({ .filename = g_folder + image.uri, .non_color = true });
-                roughness_texture = scene.AddTexture({ .filename = g_folder + image.uri, .non_color = true });
+                metallic_texture =
+                    scene.AddTexture({ .type = image_texture, .filename = g_folder + image.uri, .non_color = true });
+                roughness_texture =
+                    scene.AddTexture({ .type = image_texture, .filename = g_folder + image.uri, .non_color = true });
             }
             else
             {
-                metallic_texture = scene.AddTexture({ .is_constant = true, .color = Vec3(metallic_factor) });
-                roughness_texture = scene.AddTexture({ .is_constant = true, .color = Vec3(roughness_factor) });
+                metallic_texture = scene.AddTexture({ .type = constant_texture, .color = Vec3(metallic_factor) });
+                roughness_texture = scene.AddTexture({ .type = constant_texture, .color = Vec3(roughness_factor) });
             }
         }
 
@@ -110,11 +113,12 @@ static void LoadMaterials(Scene& scene, tinygltf::Model& model)
                 tinygltf::Texture& texture = model.textures[gltf_material.emissiveTexture.index];
                 tinygltf::Image& image = model.images[texture.source];
 
-                emissive_texture = scene.AddTexture({ .filename = g_folder + image.uri, .non_color = false });
+                emissive_texture =
+                    scene.AddTexture({ .type = image_texture, .filename = g_folder + image.uri, .non_color = false });
             }
             else
             {
-                emissive_texture = scene.AddTexture({ .is_constant = true, .color = Vec3(emission_factor) });
+                emissive_texture = scene.AddTexture({ .type = constant_texture, .color = Vec3(emission_factor) });
             }
         }
 
@@ -398,34 +402,34 @@ static MaterialIndex CreateOBJMaterial(Scene& scene, const tinyobj::material_t& 
     // TextureIndex alpha_texture;
     if (!mat.diffuse_texname.empty())
     {
-        basecolor_texture = scene.AddTexture({ .filename = root + mat.diffuse_texname });
-        // alpha_texture = scene.AddTexture({ .filename = root + mat.diffuse_texname, .non_color = true });
+        basecolor_texture = scene.AddTexture({ .type = image_texture, .filename = root + mat.diffuse_texname });
+        // alpha_texture = scene.AddTexture({ .type = image_texture, .filename = root + mat.diffuse_texname, .non_color = true });
     }
     else
     {
-        basecolor_texture = scene.AddTexture({ .is_constant = true, .color = basecolor_factor });
+        basecolor_texture = scene.AddTexture({ .type = constant_texture, .color = basecolor_factor });
     }
 
     // Use constant textures for metallic/roughness as OBJ does not provide them.
-    TextureIndex metallic_texture = scene.AddTexture({ .is_constant = true, .color = Vec3(metallic_factor) });
-    TextureIndex roughness_texture = scene.AddTexture({ .is_constant = true, .color = Vec3(roughness_factor) });
+    TextureIndex metallic_texture = scene.AddTexture({ .type = constant_texture, .color = Vec3(metallic_factor) });
+    TextureIndex roughness_texture = scene.AddTexture({ .type = constant_texture, .color = Vec3(roughness_factor) });
 
     // // Use the bump texture as a normal texture if available.
     // TextureIndex normal_texture;
     // if (!mat.bump_texname.empty())
     // {
-    //     normal_texture = scene.AddTexture({ .filename = root + mat.bump_texname, .non_color = true });
+    //     normal_texture = scene.AddTexture({ .type = image_texture, .filename = root + mat.bump_texname, .non_color = true });
     // }
 
     // Create an emission texture if provided, otherwise use a constant emission texture.
     TextureIndex emission_texture;
     if (!mat.emissive_texname.empty())
     {
-        emission_texture = scene.AddTexture({ .filename = root + mat.emissive_texname });
+        emission_texture = scene.AddTexture({ .type = image_texture, .filename = root + mat.emissive_texname });
     }
     else
     {
-        emission_texture = scene.AddTexture({ .is_constant = true, .color = emission_factor });
+        emission_texture = scene.AddTexture({ .type = constant_texture, .color = emission_factor });
     }
 
     return scene.AddMaterial<PBRMaterial>(basecolor_texture, metallic_texture, roughness_texture, emission_texture);
