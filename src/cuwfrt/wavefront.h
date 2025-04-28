@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "cuda_buffer.h"
 #include "cuda_error.h"
 #include "cuwfrt/geometry/intersection.h"
 
@@ -39,7 +40,7 @@ struct WavefrontShadowRay
 };
 
 template <typename T>
-struct RayQueue
+struct RayQueue : CudaResource1D
 {
     T* rays;
     int32* count;
@@ -64,7 +65,7 @@ struct RayQueue
 };
 
 template <typename T, int32 size>
-struct RayQueues
+struct RayQueues : CudaResource1D
 {
     T* rays[size];
     int32* counts[size];
@@ -101,7 +102,7 @@ struct RayQueues
     }
 };
 
-struct WavefrontResources
+struct WavefrontResources : CudaResource2D
 {
     static constexpr inline int32 closest_queue_count = Materials::count;
 

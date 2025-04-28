@@ -1,7 +1,6 @@
 #include "cuda_error.h"
 #include "raytracer.h"
 
-#include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 
 #include "cuwfrt/kernel/kernel_accumulate.cuh"
@@ -33,54 +32,14 @@ RayTracer::RayTracer(Window* window, const Scene* scene, const Camera* camera, c
 
     window->SetFramebufferSizeChangeCallback([&](int32 width, int32 height) -> void { Resize(width, height); });
 
-    CreateFrameBuffer();
+    frame_buffer.Init(res);
     InitGPUResources();
 }
 
 RayTracer::~RayTracer()
 {
     FreeGPUResources();
-    DeleteFrameBuffer();
-}
-
-// Initialize PBO & CUDA interop capability
-void RayTracer::CreateFrameBuffer()
-{
-    WakAssert(sizeof(float4) == sizeof(Vec4f));
-    WakAssert(sizeof(float4::x) == sizeof(Vec4f::x));
-
-    // Create PBO
-    glGenBuffers(1, &pbo);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-    glBufferData(GL_PIXEL_UNPACK_BUFFER, res.x * res.y * sizeof(Vec4f), nullptr, GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
-    // Register with CUDA
-    cudaCheck(cudaGraphicsGLRegisterBuffer(&cuda_pbo, pbo, cudaGraphicsMapFlagsWriteDiscard));
-
-    // Create texture
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, res.x, res.y, 0, GL_RGBA, GL_FLOAT, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    size_t size;
-    cudaCheck(cudaGraphicsMapResources(1, &cuda_pbo));
-    cudaCheck(cudaGraphicsResourceGetMappedPointer((void**)&frame_buffer, &size, cuda_pbo));
-
-    WakAssert(size == (res.x * res.y * sizeof(float4)));
-}
-
-void RayTracer::DeleteFrameBuffer()
-{
-    cudaCheck(cudaGraphicsUnmapResources(1, &cuda_pbo));
-    cudaCheck(cudaGraphicsUnregisterResource(cuda_pbo));
-    glDeleteBuffers(1, &pbo);
-    glDeleteTextures(1, &texture);
+    frame_buffer.Free();
 }
 
 void RayTracer::InitGPUResources()
@@ -92,11 +51,11 @@ void RayTracer::InitGPUResources()
     const int32 capacity = res.x * res.y;
     for (int32 i = 0; i < 2; ++i)
     {
-        cudaCheck(cudaMalloc(&sample_buffer[i], capacity * sizeof(float4)));
+        sample_buffer[i].Init(capacity);
         g_buffer[i].Init(capacity);
         h_buffer[i].Init(capacity);
     }
-    cudaCheck(cudaMalloc(&accumulation_buffer, capacity * sizeof(float4)));
+    accumulation_buffer.Init(capacity);
 
     for (size_t i = 0; i < streams.size(); ++i)
     {
@@ -117,11 +76,11 @@ void RayTracer::FreeGPUResources()
 
     for (int32 i = 0; i < 2; ++i)
     {
-        cudaCheck(cudaFree(sample_buffer[i]));
+        sample_buffer[i].Free();
         g_buffer[i].Free();
         h_buffer[i].Free();
     }
-    cudaCheck(cudaFree(accumulation_buffer));
+    accumulation_buffer.Free();
 
     for (size_t i = 0; i < streams.size(); ++i)
     {
@@ -147,21 +106,18 @@ void RayTracer::Resize(int32 width, int32 height)
     cudaCheck(cudaDeviceSynchronize());
 
     // Recreate framebuffer
-    DeleteFrameBuffer();
-    CreateFrameBuffer();
+    frame_buffer.Resize(res);
 
     wf.Resize(res);
 
     const int32 capacity = res.x * res.y;
     for (int32 i = 0; i < 2; ++i)
     {
-        cudaCheck(cudaFree(sample_buffer[i]));
-        cudaCheck(cudaMalloc(&sample_buffer[i], capacity * sizeof(float4)));
+        sample_buffer[i].Resize(capacity);
         g_buffer[i].Resize(capacity);
         h_buffer[i].Resize(capacity);
     }
-    cudaCheck(cudaFree(accumulation_buffer));
-    cudaCheck(cudaMalloc(&accumulation_buffer, capacity * sizeof(float4)));
+    accumulation_buffer.Resize(capacity);
 }
 
 void RayTracer::RayTrace(int32 kernel_index)
@@ -176,7 +132,7 @@ void RayTracer::RayTrace(int32 kernel_index)
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
     kernels[kernel_index]<<<blocks, threads>>>(
-        sample_buffer[frame_index], res, gpu_res.scene, *camera, g_buffer[frame_index], *options, spp++
+        &sample_buffer[frame_index], res, gpu_res.scene, *camera, g_buffer[frame_index], *options, spp++
     );
     cudaCheckLastError();
 
@@ -201,7 +157,7 @@ void RayTracer::RayTraceWavefront()
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
         GeneratePrimaryRays<<<blocks, threads>>>(
-            wf.active.rays, sample_buffer[frame_index], res, *camera, g_buffer[frame_index], spp++
+            wf.active.rays, &sample_buffer[frame_index], res, *camera, g_buffer[frame_index], spp++
         );
         cudaCheckLastError();
     }
@@ -232,7 +188,7 @@ void RayTracer::RayTraceWavefront()
         {
             const int32 threads = 128;
             int32 blocks = (num_miss_rays + threads - 1) / threads;
-            Miss<<<blocks, threads, 0, streams[0]>>>(wf.miss.rays, num_miss_rays, sample_buffer[frame_index]);
+            Miss<<<blocks, threads, 0, streams[0]>>>(wf.miss.rays, num_miss_rays, &sample_buffer[frame_index]);
             cudaCheckLastError();
         }
 
@@ -247,7 +203,7 @@ void RayTracer::RayTraceWavefront()
                 DynamicDispatcher<Materials>(i).Dispatch([&](auto* m) {
                     using MaterialType = std::remove_pointer_t<decltype(m)>;
                     Closest<MaterialType><<<blocks, threads, 0, ray_queue_streams[i]>>>(
-                        wf.closest.rays[i], num_closest_rays[i], wf.next, wf.shadow, sample_buffer[frame_index], gpu_res.scene,
+                        wf.closest.rays[i], num_closest_rays[i], wf.next, wf.shadow, &sample_buffer[frame_index], gpu_res.scene,
                         g_buffer[frame_index], bounce
                     );
                     cudaCheckLastError();
@@ -274,7 +230,7 @@ void RayTracer::RayTraceWavefront()
             const int32 threads = 128;
             int32 blocks = (num_shadow_rays + threads - 1) / threads;
             TraceShadowRay<<<blocks, threads, 0, streams[1]>>>(
-                wf.shadow.rays, num_shadow_rays, sample_buffer[frame_index], gpu_res.scene
+                wf.shadow.rays, num_shadow_rays, &sample_buffer[frame_index], gpu_res.scene
             );
             cudaCheckLastError();
         }
@@ -304,7 +260,7 @@ void RayTracer::AccumulateSamples(bool render)
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    Accumulate<<<blocks, threads>>>(sample_buffer[frame_index], accumulation_buffer, frame_buffer, res, spp, render);
+    Accumulate<<<blocks, threads>>>(&sample_buffer[frame_index], &accumulation_buffer, &frame_buffer, res, spp, render);
     cudaCheckLastError();
 
     cudaCheck(cudaDeviceSynchronize());
@@ -315,10 +271,10 @@ void RayTracer::Denoise()
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    Vec4* current_buffer = sample_buffer[frame_index];
-    Vec4* next_buffer = sample_buffer[1 - frame_index];
+    Vec4* current_buffer = &sample_buffer[frame_index];
+    Vec4* next_buffer = &sample_buffer[1 - frame_index];
 
-    PrepareDenoise<<<blocks, threads>>>(accumulation_buffer, current_buffer, g_buffer[frame_index], h_buffer[frame_index], res);
+    PrepareDenoise<<<blocks, threads>>>(&accumulation_buffer, current_buffer, g_buffer[frame_index], h_buffer[frame_index], res);
     cudaCheckLastError();
 
     FilterTemporal<<<blocks, threads>>>(
@@ -349,7 +305,7 @@ void RayTracer::Denoise()
         std::swap(current_buffer, next_buffer);
     }
 
-    FinalizeDenoise<<<blocks, threads>>>(frame_buffer, current_buffer, res, g_buffer[frame_index]);
+    FinalizeDenoise<<<blocks, threads>>>(&frame_buffer, current_buffer, res, g_buffer[frame_index]);
     cudaCheckLastError();
 
     cudaCheck(cudaDeviceSynchronize());
@@ -360,7 +316,7 @@ void RayTracer::RenderAccumulated()
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    RenderFrameBuffer<<<blocks, threads>>>(accumulation_buffer, frame_buffer, res);
+    RenderFrameBuffer<<<blocks, threads>>>(&accumulation_buffer, &frame_buffer, res);
     cudaCheckLastError();
 }
 
@@ -373,8 +329,8 @@ void RayTracer::DrawFrame()
 // Copy PBO data to texture
 void RayTracer::UpdateTexture()
 {
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, frame_buffer.pbo);
+    glBindTexture(GL_TEXTURE_2D, frame_buffer.texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, res.x, res.y, GL_RGBA, GL_FLOAT, nullptr);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 }
@@ -383,7 +339,7 @@ void RayTracer::UpdateTexture()
 void RayTracer::RenderQuad()
 {
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glBindTexture(GL_TEXTURE_2D, frame_buffer.texture);
     qr.Draw();
 }
 

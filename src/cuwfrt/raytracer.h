@@ -9,6 +9,8 @@
 #include "wavefront.h"
 
 #include "camera/camera.h"
+#include "cuda_buffer.h"
+#include "frame_buffer.h"
 #include "quad_renderer.h"
 
 namespace cuwfrt
@@ -50,9 +52,6 @@ private:
     void InitGPUResources();
     void FreeGPUResources();
 
-    void CreateFrameBuffer();
-    void DeleteFrameBuffer();
-
     void UpdateTexture();
     void RenderQuad();
 
@@ -61,19 +60,17 @@ private:
     Window* window;
     Point2i res;
 
-    GLuint pbo, texture;
-    cudaGraphicsResource* cuda_pbo;
-    Vec4* frame_buffer;
+    FrameBuffer frame_buffer;
 
     int32 frame_index;
-    Vec4* sample_buffer[2];
+    Buffer<Vec4> sample_buffer[2];
 
     Camera g_camera[2];
     GBuffer g_buffer[2];
     HistoryBuffer h_buffer[2];
 
     int32 spp;
-    Vec4* accumulation_buffer;
+    Buffer<Vec4> accumulation_buffer;
 
     QuadRenderer qr;
 
