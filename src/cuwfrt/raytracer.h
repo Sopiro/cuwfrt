@@ -65,8 +65,9 @@ private:
     int32 frame_index;
     Buffer<Vec4> sample_buffer[2];
 
-    Camera g_camera[2];
     GBuffer g_buffer[2];
+
+    Camera h_camera[2];
     HistoryBuffer h_buffer[2];
 
     int32 spp;

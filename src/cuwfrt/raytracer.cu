@@ -126,7 +126,7 @@ void RayTracer::RayTrace(int32 kernel_index)
     frame_index = 1 - frame_index;
 
     // Save camera data for motion vector calculation
-    g_camera[frame_index] = *camera;
+    h_camera[frame_index] = *camera;
 
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
@@ -144,7 +144,7 @@ void RayTracer::RayTraceWavefront()
     frame_index = 1 - frame_index;
 
     // Save camera data for motion vector calculation
-    g_camera[frame_index] = *camera;
+    h_camera[frame_index] = *camera;
 
     int32 num_active_rays = wf.ray_capacity;
     int32 num_next_rays = 0;
@@ -277,9 +277,11 @@ void RayTracer::Denoise()
     PrepareDenoise<<<blocks, threads>>>(&accumulation_buffer, current_buffer, g_buffer[frame_index], h_buffer[frame_index], res);
     cudaCheckLastError();
 
+    static Camera camera0;
+    bool consistent = (camera0 == h_camera[1 - frame_index]);
     FilterTemporal<<<blocks, threads>>>(
-        current_buffer, res, g_buffer[1 - frame_index], g_buffer[frame_index], g_camera[1 - frame_index],
-        h_buffer[1 - frame_index], h_buffer[frame_index]
+        current_buffer, res, g_buffer[1 - frame_index], g_buffer[frame_index], h_buffer[1 - frame_index], h_buffer[frame_index],
+        h_camera[1 - frame_index], consistent
     );
     cudaCheckLastError();
 
@@ -295,9 +297,9 @@ void RayTracer::Denoise()
     for (int32 i = 0; i < atrous_iterations; ++i)
     {
         int32 step = 1 << i;
+
         FilterSpatial<<<blocks, threads>>>(
-            current_buffer, next_buffer, res, step, g_buffer[frame_index], h_buffer[current_index], h_buffer[1 - current_index],
-            spp
+            current_buffer, next_buffer, res, step, g_buffer[frame_index], h_buffer[current_index], h_buffer[1 - current_index]
         );
         cudaCheckLastError();
 
@@ -307,6 +309,8 @@ void RayTracer::Denoise()
 
     FinalizeDenoise<<<blocks, threads>>>(&frame_buffer, current_buffer, res, g_buffer[frame_index]);
     cudaCheckLastError();
+
+    camera0 = *camera;
 
     cudaCheck(cudaDeviceSynchronize());
 }

@@ -120,10 +120,10 @@ __KERNEL__ void PrepareDenoise(Vec4* in_buffer, Vec4* out_buffer, GBuffer g_buff
     }
     else
     {
-        out_buffer[index] = Vec4(0);
-
         g_buffer.albedo[index] = in_buffer[index];
         g_buffer.albedo[index].w = 0;
+
+        out_buffer[index] = Vec4(0);
     }
 
     g_buffer.dzdp[index] = Vec2(dzdx, dzdy);
@@ -134,9 +134,10 @@ __KERNEL__ void FilterTemporal(
     Point2i res,
     GBuffer prev_g_buffer,
     GBuffer g_buffer,
-    Camera prev_camera,
     HistoryBuffer prev_h_buffer,
-    HistoryBuffer h_buffer
+    HistoryBuffer h_buffer,
+    Camera prev_camera,
+    bool consistent
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -155,8 +156,7 @@ __KERNEL__ void FilterTemporal(
     Vec4 color0(0);
 
     // Temporal reprojection
-    bool reprojectable = ValidateReprojection(prev_g_buffer, g_buffer, res, index, p0, index0);
-    if (reprojectable)
+    if (consistent && ValidateReprojection(prev_g_buffer, g_buffer, res, index, p0, index0))
     {
         moments0 = GetVec2(prev_h_buffer.moments[index0]);
         color0 = prev_h_buffer.color[index0];
@@ -283,8 +283,7 @@ __KERNEL__ void FilterSpatial(
     int32 step,
     GBuffer g_buffer,
     HistoryBuffer in_h_buffer,
-    HistoryBuffer out_h_buffer,
-    int32 spp
+    HistoryBuffer out_h_buffer
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -303,8 +302,7 @@ __KERNEL__ void FilterSpatial(
     Vec3 n_p = GetVec3(g_buffer.normal[index]);
     Float l_p = Luminance(in_sample_buffer[index]);
 
-    // Scale variance by sqrt(spp) to steer the edge stopping function
-    Float var_p = sqrtf(spp) * in_h_buffer.moments[index].z;
+    Float var_p = in_h_buffer.moments[index].z;
 
     // clang-format off
     constexpr int32 s = 5;

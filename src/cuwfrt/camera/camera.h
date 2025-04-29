@@ -80,6 +80,9 @@ public:
         return { px, py };
     }
 
+    bool operator==(const Camera&) const = default;
+    bool operator!=(const Camera&) const = default;
+
 private:
     Float focus_dist;
     Float sigma;
