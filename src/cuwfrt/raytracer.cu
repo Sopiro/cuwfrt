@@ -32,14 +32,20 @@ RayTracer::RayTracer(Window* window, const Scene* scene, const Camera* camera, c
 
     window->SetFramebufferSizeChangeCallback([&](int32 width, int32 height) -> void { Resize(width, height); });
 
-    frame_buffer.Init(res);
+    for (int32 i = 0; i < 2; ++i)
+    {
+        frame_buffer[i].Init(res);
+    }
     InitGPUResources();
 }
 
 RayTracer::~RayTracer()
 {
     FreeGPUResources();
-    frame_buffer.Free();
+    for (int32 i = 0; i < 2; ++i)
+    {
+        frame_buffer[i].Free();
+    }
 }
 
 void RayTracer::InitGPUResources()
@@ -106,7 +112,10 @@ void RayTracer::Resize(int32 width, int32 height)
     cudaCheck(cudaDeviceSynchronize());
 
     // Recreate framebuffer
-    frame_buffer.Resize(res);
+    for (int32 i = 0; i < 2; ++i)
+    {
+        frame_buffer[i].Resize(res);
+    }
 
     wf.Resize(res);
 
@@ -260,7 +269,9 @@ void RayTracer::AccumulateSamples(bool render)
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    Accumulate<<<blocks, threads>>>(&sample_buffer[frame_index], &accumulation_buffer, &frame_buffer, res, spp, render);
+    Accumulate<<<blocks, threads>>>(
+        &sample_buffer[frame_index], &accumulation_buffer, &frame_buffer[frame_index], res, spp, render
+    );
     cudaCheckLastError();
 
     cudaCheck(cudaDeviceSynchronize());
@@ -271,17 +282,20 @@ void RayTracer::Denoise()
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    Vec4* current_buffer = &sample_buffer[frame_index];
-    Vec4* next_buffer = &sample_buffer[1 - frame_index];
+    int32 current_index = frame_index;
+    int32 next_index = 1 - frame_index;
 
-    PrepareDenoise<<<blocks, threads>>>(&accumulation_buffer, current_buffer, g_buffer[frame_index], h_buffer[frame_index], res);
+    PrepareDenoise<<<blocks, threads>>>(
+        &accumulation_buffer, &sample_buffer[current_index], g_buffer[frame_index], h_buffer[frame_index], res
+    );
     cudaCheckLastError();
 
     static Camera camera0;
     bool consistent = (camera0 == h_camera[1 - frame_index]);
+
     FilterTemporal<<<blocks, threads>>>(
-        current_buffer, res, g_buffer[1 - frame_index], g_buffer[frame_index], h_buffer[1 - frame_index], h_buffer[frame_index],
-        h_camera[1 - frame_index], consistent
+        &sample_buffer[current_index], res, g_buffer[1 - frame_index], g_buffer[frame_index], h_buffer[1 - frame_index],
+        h_buffer[frame_index], h_camera[1 - frame_index], consistent
     );
     cudaCheckLastError();
 
@@ -293,23 +307,26 @@ void RayTracer::Denoise()
 
     const int32 atrous_iterations = 5;
 
-    int32 current_index = frame_index;
     for (int32 i = 0; i < atrous_iterations; ++i)
     {
         int32 step = 1 << i;
 
         FilterSpatial<<<blocks, threads>>>(
-            current_buffer, next_buffer, res, step, g_buffer[frame_index], h_buffer[current_index], h_buffer[1 - current_index]
+            &sample_buffer[current_index], &sample_buffer[next_index], res, step, g_buffer[frame_index], h_buffer[current_index],
+            h_buffer[1 - current_index]
         );
         cudaCheckLastError();
 
-        current_index = 1 - current_index;
-        std::swap(current_buffer, next_buffer);
+        current_index = next_index;
+        next_index = 1 - next_index;
     }
 
-    FinalizeDenoise<<<blocks, threads>>>(&frame_buffer, current_buffer, res, g_buffer[frame_index]);
+    FinalizeDenoise<<<blocks, threads>>>(
+        &frame_buffer[1 - frame_index], &frame_buffer[frame_index], &sample_buffer[current_index], res, g_buffer[frame_index]
+    );
     cudaCheckLastError();
 
+    // Save camera for consistency checking
     camera0 = *camera;
 
     cudaCheck(cudaDeviceSynchronize());
@@ -320,30 +337,21 @@ void RayTracer::RenderAccumulated()
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
 
-    RenderFrameBuffer<<<blocks, threads>>>(&accumulation_buffer, &frame_buffer, res);
+    RenderFrameBuffer<<<blocks, threads>>>(&accumulation_buffer, &frame_buffer[frame_index], res);
     cudaCheckLastError();
 }
 
 void RayTracer::DrawFrame()
 {
-    UpdateTexture();
-    RenderQuad();
-}
-
-// Copy PBO data to texture
-void RayTracer::UpdateTexture()
-{
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, frame_buffer.pbo);
-    glBindTexture(GL_TEXTURE_2D, frame_buffer.texture);
+    // Copy PBO data to texture
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, frame_buffer[frame_index].pbo);
+    glBindTexture(GL_TEXTURE_2D, frame_buffer[frame_index].texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, res.x, res.y, GL_RGBA, GL_FLOAT, nullptr);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-}
 
-// OpenGL Rendering: Use PBO texture on a fullscreen quad
-void RayTracer::RenderQuad()
-{
+    // OpenGL Rendering: Use PBO texture on a fullscreen quad
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, frame_buffer.texture);
+    glBindTexture(GL_TEXTURE_2D, frame_buffer[frame_index].texture);
     qr.Draw();
 }
 

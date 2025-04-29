@@ -52,15 +52,12 @@ private:
     void InitGPUResources();
     void FreeGPUResources();
 
-    void UpdateTexture();
-    void RenderQuad();
-
     void Resize(int32 width, int32 height);
 
     Window* window;
     Point2i res;
 
-    FrameBuffer frame_buffer;
+    FrameBuffer frame_buffer[2];
 
     int32 frame_index;
     Buffer<Vec4> sample_buffer[2];

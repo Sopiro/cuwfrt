@@ -363,7 +363,9 @@ __KERNEL__ void FilterSpatial(
     }
 }
 
-__KERNEL__ void FinalizeDenoise(Vec4* frame_buffer, Vec4* filtered_buffer, Point2i res, GBuffer g_buffer)
+__KERNEL__ void FinalizeDenoise(
+    Vec4* prev_frame_buffer, Vec4* out_frame_buffer, Vec4* filtered_buffer, Point2i res, GBuffer g_buffer
+)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -374,11 +376,11 @@ __KERNEL__ void FinalizeDenoise(Vec4* frame_buffer, Vec4* filtered_buffer, Point
     Vec4 albedo = g_buffer.albedo[index];
     if (albedo.w)
     {
-        frame_buffer[index] = ToSRGB(filtered_buffer[index] * albedo);
+        out_frame_buffer[index] = ToSRGB(filtered_buffer[index] * albedo);
     }
     else
     {
-        frame_buffer[index] = ToSRGB(albedo);
+        out_frame_buffer[index] = ToSRGB(albedo);
 
         g_buffer.albedo[index] = Vec4(0);
     }
