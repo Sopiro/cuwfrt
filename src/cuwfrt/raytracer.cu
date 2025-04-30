@@ -37,6 +37,8 @@ RayTracer::RayTracer(Window* window, const Scene* scene, const Camera* camera, c
         frame_buffer[i].Init(res);
     }
     InitGPUResources();
+
+    h_camera[1 - frame_index] = Camera(Point3(0), Point3(0), Vec3(0), -1, -1, -1, Point2i(-1), -1);
 }
 
 RayTracer::~RayTracer()

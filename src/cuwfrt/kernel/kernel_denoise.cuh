@@ -81,34 +81,46 @@ __KERNEL__ void PrepareDenoise(Vec4* in_buffer, Vec4* out_buffer, GBuffer g_buff
 
     const int32 index = y * res.x + x;
 
-    // Approximate depth derivatives
-    Float dzdx = 0;
-    Float dzdy = 0;
+    Float z = g_buffer.position[index].w;
 
-    if (x > 0 && x < res.x - 1)
+    // Approximate depth derivatives
+    Float dzdx, dzdy;
+
+    if (x == 0) // Left boundary
+    {
+        // Forward differences
+        Float z1 = g_buffer.position[y * res.x + (x + 1)].w;
+        dzdx = z1 - z;
+    }
+    else if (x == res.x - 1) // Right boundary
+    {
+        // Backward differences
+        Float z0 = g_buffer.position[y * res.x + (x - 1)].w;
+        dzdx = z - z0;
+    }
+    else // Totally inside
     {
         Float z0 = g_buffer.position[y * res.x + (x - 1)].w;
         Float z1 = g_buffer.position[y * res.x + (x + 1)].w;
         dzdx = 0.5f * (z1 - z0);
     }
-    else if (x < res.x - 1)
-    {
-        Float z = g_buffer.position[index].w;
-        Float z1 = g_buffer.position[y * res.x + (x + 1)].w;
-        dzdx = z1 - z;
-    }
 
-    if (y > 0 && y < res.y - 1)
+    // Same goes for y axis
+    if (y == 0)
     {
-        Float z1 = g_buffer.position[(y - 1) * res.x + x].w;
-        Float z0 = g_buffer.position[(y + 1) * res.x + x].w;
-        dzdy = 0.5f * (z0 - z1);
+        Float z1 = g_buffer.position[(y + 1) * res.x + x].w;
+        dzdy = z1 - z;
     }
-    else if (y < res.y - 1)
+    else if (y == res.y - 1)
     {
-        Float z = g_buffer.position[index].w;
-        Float z0 = g_buffer.position[(y + 1) * res.x + x].w;
-        dzdy = z0 - z;
+        Float z0 = g_buffer.position[(y - 1) * res.x + x].w;
+        dzdy = z - z0;
+    }
+    else
+    {
+        Float z0 = g_buffer.position[(y - 1) * res.x + x].w;
+        Float z1 = g_buffer.position[(y + 1) * res.x + x].w;
+        dzdy = 0.5f * (z1 - z0);
     }
 
     // Demomuldate albedo. We are going to filter the illumination only

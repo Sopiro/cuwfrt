@@ -78,6 +78,7 @@ private:
 
     std::array<cudaStream_t, 2> streams;
     std::array<cudaStream_t, Materials::count> ray_queue_streams;
+
     GPUResources gpu_res;
     WavefrontResources wf;
 };
