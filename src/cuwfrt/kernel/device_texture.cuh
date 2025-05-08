@@ -43,35 +43,35 @@ inline __GPU__ void FilterTexCoord(int32* u, int32* v, int32 width, int32 height
 }
 
 template <typename T>
-inline __GPU__ T SampleTexture(const T* image_texture, Point2i res, Point2 uv, TexCoordFilter texcoord_filter = repeat)
+inline __GPU__ T SampleTexture(const T* image, Point2i res, Point2 uv, TexCoordFilter texcoord_filter = repeat)
 {
 #if 0
     // Nearest sampling
-    Float w = uv.x * image.width + 0.5f;
-    Float h = uv.y * image.height + 0.5f;
+    Float w = uv.x * res.x + 0.5f;
+    Float h = uv.y * res.y + 0.5f;
 
     int32 i = int32(w);
     int32 j = int32(h);
 
     FilterTexCoord(&i, &j);
 
-    return image[i + j * image.width];
+    return image[i + j * res.x];
 #else
     // Bilinear sampling
-    Float w = uv.x * image.width + 0.5f;
-    Float h = uv.y * image.height + 0.5f;
+    Float w = uv.x * res.x + 0.5f;
+    Float h = uv.y * res.y + 0.5f;
 
     int32 i0 = int32(w), i1 = int32(w) + 1;
     int32 j0 = int32(h), j1 = int32(h) + 1;
 
-    FilterTexCoord(&i0, &j0, image.width, image.height, texcoord_filter);
-    FilterTexCoord(&i1, &j1, image.width, image.height, texcoord_filter);
+    FilterTexCoord(&i0, &j0, res.x, res.y, texcoord_filter);
+    FilterTexCoord(&i1, &j1, res.x, res.y, texcoord_filter);
 
     Float fu = w - std::floor(w);
     Float fv = h - std::floor(h);
 
-    T v00 = image[i0 + j0 * image.width], v10 = image[i1 + j0 * image.width];
-    T v01 = image[i0 + j1 * image.width], v11 = image[i1 + j1 * image.width];
+    T v00 = image[i0 + j0 * res.x], v10 = image[i1 + j0 * res.x];
+    T v01 = image[i0 + j1 * res.x], v11 = image[i1 + j1 * res.x];
 
     // clang-format off
 return (1-fu) * (1-fv) * v00 + (1-fu) * (fv) * v01 +
