@@ -288,7 +288,8 @@ void RayTracer::Denoise()
     int32 next_index = 1 - frame_index;
 
     PrepareDenoise<<<blocks, threads>>>(
-        &accumulation_buffer, &sample_buffer[current_index], g_buffer[frame_index], h_buffer[frame_index], res
+        &accumulation_buffer, &sample_buffer[current_index], g_buffer[frame_index], h_buffer[frame_index],
+        h_camera[1 - frame_index], res
     );
     cudaCheckLastError();
 
@@ -315,7 +316,7 @@ void RayTracer::Denoise()
 
         FilterSpatial<<<blocks, threads>>>(
             &sample_buffer[current_index], &sample_buffer[next_index], res, step, g_buffer[frame_index], h_buffer[current_index],
-            h_buffer[1 - current_index]
+            h_buffer[1 - current_index], spp
         );
         cudaCheckLastError();
 

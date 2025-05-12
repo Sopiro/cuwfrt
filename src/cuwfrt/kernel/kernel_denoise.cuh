@@ -73,7 +73,9 @@ EdgeStoppingWeight(Point2i p, Point2i q, Float z_p, Float z_q, Vec2 dzdp, Vec3 n
     return w_n * exp(-(w_z + w_l));
 }
 
-__KERNEL__ void PrepareDenoise(Vec4* in_buffer, Vec4* out_buffer, GBuffer g_buffer, HistoryBuffer h_buffer, Point2i res)
+__KERNEL__ void PrepareDenoise(
+    Vec4* in_buffer, Vec4* out_buffer, GBuffer g_buffer, HistoryBuffer h_buffer, Camera prev_camera, Point2i res
+)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -139,6 +141,8 @@ __KERNEL__ void PrepareDenoise(Vec4* in_buffer, Vec4* out_buffer, GBuffer g_buff
     }
 
     g_buffer.dzdp[index] = Vec2(dzdx, dzdy);
+
+    g_buffer.motion[index] = prev_camera.GetRasterPos(GetVec3(g_buffer.position[index]));
 }
 
 __KERNEL__ void FilterTemporal(
@@ -159,7 +163,7 @@ __KERNEL__ void FilterTemporal(
     const int32 index = y * res.x + x;
 
     // Find previous pixel position
-    Point2i p0 = prev_camera.GetRasterPos(GetVec3(g_buffer.position[index]));
+    Point2i p0 = g_buffer.motion[index];
     int32 index0 = p0.x + p0.y * res.x;
 
     int32 history = 1;
@@ -295,7 +299,8 @@ __KERNEL__ void FilterSpatial(
     int32 step,
     GBuffer g_buffer,
     HistoryBuffer in_h_buffer,
-    HistoryBuffer out_h_buffer
+    HistoryBuffer out_h_buffer,
+    int32 spp
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -314,7 +319,8 @@ __KERNEL__ void FilterSpatial(
     Vec3 n_p = GetVec3(g_buffer.normal[index]);
     Float l_p = Luminance(in_sample_buffer[index]);
 
-    Float var_p = in_h_buffer.moments[index].z;
+    // Scale variance by sqrt(spp) to steer the edge stopping strength
+    Float var_p = sqrtf(spp) * in_h_buffer.moments[index].z;
 
     // clang-format off
     constexpr int32 s = 5;

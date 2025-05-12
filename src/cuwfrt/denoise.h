@@ -34,10 +34,11 @@ struct HistoryBuffer
 
 struct GBuffer
 {
-    Vec4* position; // w: camera space linear depth
-    Vec4* normal;   // w: primitive index
-    Vec4* albedo;
-    Vec2* dzdp;     // screen space depth derivates dzdx, dzdy
+    Vec4* position; // xyz: world space position        w: camera space linear depth
+    Vec4* normal;   // xyz: world space shading normal  w: primitive index
+    Vec4* albedo;   // directional-hemispherical reflectance
+    Vec2* dzdp;     // screen space depth derivates (dzdx, dzdy)
+    Vec2i* motion;  // screen space motion vector (pixel index in previous frame)
 
     void Init(int32 capacity)
     {
@@ -45,6 +46,7 @@ struct GBuffer
         cudaCheck(cudaMalloc(&normal, capacity * sizeof(decltype(*normal))));
         cudaCheck(cudaMalloc(&albedo, capacity * sizeof(decltype(*albedo))));
         cudaCheck(cudaMalloc(&dzdp, capacity * sizeof(decltype(*dzdp))));
+        cudaCheck(cudaMalloc(&motion, capacity * sizeof(decltype(*motion))));
     }
 
     void Free()
@@ -53,6 +55,7 @@ struct GBuffer
         cudaCheck(cudaFree(normal));
         cudaCheck(cudaFree(albedo));
         cudaCheck(cudaFree(dzdp));
+        cudaCheck(cudaFree(motion));
     }
 
     void Resize(int32 capacity)
@@ -61,10 +64,12 @@ struct GBuffer
         cudaCheck(cudaFree(normal));
         cudaCheck(cudaFree(albedo));
         cudaCheck(cudaFree(dzdp));
+        cudaCheck(cudaFree(motion));
         cudaCheck(cudaMalloc(&position, capacity * sizeof(decltype(*position))));
         cudaCheck(cudaMalloc(&normal, capacity * sizeof(decltype(*normal))));
         cudaCheck(cudaMalloc(&albedo, capacity * sizeof(decltype(*albedo))));
         cudaCheck(cudaMalloc(&dzdp, capacity * sizeof(decltype(*dzdp))));
+        cudaCheck(cudaMalloc(&motion, capacity * sizeof(decltype(*motion))));
     }
 };
 
