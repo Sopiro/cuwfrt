@@ -19,8 +19,12 @@ Wavefront raytracer written in CUDA
 ![sc1](.github/screenshot.png) | ![sc2](.github/screenshot2.png)
 |--|--|
 
-![sc3](.github/screenshot3.png) | ![sc4](.github/screenshot4.png)
+![sc4](.github/screenshot4.png) | ![sc5](.github/screenshot5.png)
 |--|--|
+
+![sc6](.github/screenshot6.png) | ![sc7](.github/screenshot7.png)
+|--|--|
+
 
 ## Architecture Diagram
 ![diagram](.github/diagram.drawio.png)
@@ -30,3 +34,10 @@ Wavefront raytracer written in CUDA
 - Ensure CMake is in the system PATH
 - Clone the repository git clone https://github.com/Sopiro/cuwfrt.git
 - Run `build.bat`
+
+## Models
+- [Sponza](https://github.com/KhronosGroup/glTF-Sample-Models/tree/main/2.0/Sponza)
+- [LTE orb](https://github.com/lighttransport/lighttransportequation-orb?tab=readme-ov-file) by [MirageYM](https://github.com/MirageYM)
+- [Ford Mustang 1965](https://sketchfab.com/3d-models/ford-mustang-1965-5f4e3965f79540a9888b5d05acea5943) by [Pooya_dh](https://sketchfab.com/Pooya_dh)
+- [The Grey & White Room](https://blendswap.com/blend/13552) by [Wig42](https://blendswap.com/blend/13552)
+- [The White Room](https://blendswap.com/blend/5014) by [Jay-Artist](https://blendswap.com/profile/1574)
