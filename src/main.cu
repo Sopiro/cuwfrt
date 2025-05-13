@@ -370,7 +370,7 @@ static void Init()
     BuildScene();
 
     player.position.Set(0.5, 0.5, 1.0f);
-    player.speed = 1.2f;
+    player.speed = 1.0f;
     player.damping = 100.0f;
 
     options.max_bounces = 3;

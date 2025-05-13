@@ -31,6 +31,11 @@ inline __GPU__ void AtomicAdd(Vec4* a, Vec3 b)
     atomicAdd(&a->z, b.z);
 }
 
+inline __GPU__ Float Luminance(Vec4 color)
+{
+    return 0.2126f * color.x + 0.7152f * color.y + 0.0722f * color.z;
+}
+
 inline __GPU__ Vec4 ToLinearRGB(Vec4 srgb)
 {
     return Vec4(std::pow(srgb.x, 2.2f), std::pow(srgb.y, 2.2f), std::pow(srgb.z, 2.2f), 1.0f);

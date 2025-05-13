@@ -32,9 +32,17 @@ __KERNEL__ void RaytraceAO(
 
     if (!found_intersection)
     {
+        g_buffer.position[index] = Vec4(0);
+        g_buffer.normal[index] = Vec4(0);
+        g_buffer.albedo[index] = Vec4(0);
+
         sample_buffer[index] = Vec4(0, 0, 0, 1);
         return;
     }
+
+    g_buffer.position[index] = Vec4(isect.point, isect.t);
+    g_buffer.normal[index] = Vec4(isect.shading_normal, isect.prim);
+    g_buffer.albedo[index] = Vec4(1);
 
     Vec3 wi_local = SampleCosineHemisphere({ rng.NextFloat(), rng.NextFloat() });
     // Float pdf = CosineHemispherePDF(wi_local.z);

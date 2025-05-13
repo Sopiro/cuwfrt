@@ -56,6 +56,12 @@ __KERNEL__ void PathTraceNEE(
     int y = threadIdx.y + blockIdx.y * blockDim.y;
     if (x >= res.x || y >= res.y) return;
 
+    const int32 index = y * res.x + x;
+
+    g_buffer.position[index] = Vec4(0);
+    g_buffer.normal[index] = Vec4(0);
+    g_buffer.albedo[index] = Vec4(0);
+
     RNG rng(Hash(x, y, seed));
 
     // Generate primary ray
@@ -86,6 +92,13 @@ __KERNEL__ void PathTraceNEE(
         Vec3 wo = Normalize(-ray.d);
 
         Material* mat = GetMaterial(&scene, isect.prim);
+
+        if (bounce == 0)
+        {
+            g_buffer.position[index] = Vec4(isect.point, isect.t);
+            g_buffer.normal[index] = Vec4(isect.shading_normal, isect.prim);
+            g_buffer.albedo[index] = Vec4(mat->Albedo(&scene, isect, wo), 0);
+        }
 
         if (Vec3 Le = mat->Le(&scene, isect, wo); Le != Vec3(0))
         {
@@ -139,7 +152,6 @@ __KERNEL__ void PathTraceNEE(
         }
     }
 
-    int32 index = y * res.x + x;
     sample_buffer[index] = Vec4(L, 0);
 }
 

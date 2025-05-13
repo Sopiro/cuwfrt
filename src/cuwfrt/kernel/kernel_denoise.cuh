@@ -9,11 +9,6 @@
 namespace cuwfrt
 {
 
-inline __GPU__ Float Luminance(Vec4 color)
-{
-    return 0.2126f * color.x + 0.7152f * color.y + 0.0722f * color.z;
-}
-
 inline __GPU__ bool ValidateReprojection(
     const GBuffer& prev_g_buffer, const GBuffer& g_buffer, Point2i res, int32 index, Point2i p0, int32 index0
 )

@@ -37,6 +37,7 @@ struct GBuffer
     Vec4* position; // xyz: world space position        w: camera space linear depth
     Vec4* normal;   // xyz: world space shading normal  w: primitive index
     Vec4* albedo;   // directional-hemispherical reflectance
+
     Vec2* dzdp;     // screen space depth derivates (dzdx, dzdy)
     Vec2i* motion;  // screen space motion vector (pixel index in previous frame)
 
