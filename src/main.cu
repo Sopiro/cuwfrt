@@ -32,7 +32,7 @@ static Float aperture = 0;
 static Float focus_dist = 1;
 
 static int32 selection = RayTracer::num_kernels - 1;
-static bool denoise = true;
+static bool denoise = false;
 
 static Vec3 GetForward()
 {

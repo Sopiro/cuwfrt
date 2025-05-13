@@ -404,7 +404,13 @@ __KERNEL__ void FinalizeDenoise(Vec4* filtered_buffer, Point2i res, GBuffer g_bu
 
 // https://advances.realtimerendering.com/s2014/epic/TemporalAA.pptx
 __KERNEL__ void TemporalAntiAliasing(
-    Vec4* prev_frame_buffer, Vec4* out_frame_buffer, Vec4* filtered_buffer, Point2i res, GBuffer prev_g_buffer, GBuffer g_buffer
+    Vec4* prev_frame_buffer,
+    Vec4* out_frame_buffer,
+    Vec4* filtered_buffer,
+    Point2i res,
+    GBuffer prev_g_buffer,
+    GBuffer g_buffer,
+    bool consistent
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -419,7 +425,7 @@ __KERNEL__ void TemporalAntiAliasing(
     Point2i p0 = g_buffer.motion[index];
     int32 index0 = p0.x + p0.y * res.x;
 
-    if (p0.x >= 0 && p0.x < res.x && p0.y >= 0 && p0.y < res.y && g_buffer.position[index].w > 0)
+    if (consistent && p0.x >= 0 && p0.x < res.x && p0.y >= 0 && p0.y < res.y && g_buffer.position[index].w > 0)
     {
         color0 = RGBtoYUV(ToLinearRGB(prev_frame_buffer[index0]));
 
