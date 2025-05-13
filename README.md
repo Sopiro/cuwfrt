@@ -6,6 +6,7 @@ Wavefront raytracer written in CUDA
 - Wavefront rendering [Laine et al. (2013)](https://research.nvidia.com/sites/default/files/pubs/2013-07_Megakernels-Considered-Harmful/laine2013hpg_paper.pdf)
 - Multiple importance sampling with next event estimation
 - SVGF realtime denoising [Schied et al. (2017)](https://research.nvidia.com/sites/default/files/pubs/2017-07_Spatiotemporal-Variance-Guided-Filtering%3A//svgf_preprint.pdf)
+- Temporal Anti-Aliasing [Karis (2014)](https://advances.realtimerendering.com/s2014/epic/TemporalAA.pptx)
 - Binary SAH BVH upload to GPU
 - Materials
   - Diffuse, Mirror, Dielectric, PBR(Trowbridge-Reitz GGX) and Diffuse Area Light
