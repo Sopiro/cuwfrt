@@ -41,11 +41,59 @@ void SetLoaderFallbackMaterial(MaterialIndex material_index)
     g_fallback_material = material_index;
 }
 
+// https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_materials_ior/README.md
+double GetIOR(const tinygltf::Material& material)
+{
+    auto it = material.extensions.find("KHR_materials_ior");
+    if (it != material.extensions.end())
+    {
+        const tinygltf::Value& iorExtension = it->second;
+
+        if (iorExtension.Has("ior"))
+        {
+            return iorExtension.Get("ior").Get<double>();
+        }
+    }
+
+    return 1.5;
+}
+
+// https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_materials_transmission/README.md
+bool HasTransmissionExt(const tinygltf::Material& material)
+{
+    auto it = material.extensions.find("KHR_materials_transmission");
+    if (it != material.extensions.end())
+    {
+        const tinygltf::Value& transmissionExtension = it->second;
+
+        if (transmissionExtension.Has("transmissionFactor"))
+        {
+            double factor = transmissionExtension.Get("transmissionFactor").Get<double>();
+            return factor > 0;
+        }
+
+        if (transmissionExtension.Has("transmissionTexture"))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static void LoadMaterials(Scene& scene, tinygltf::Model& model)
 {
     for (int32 i = 0; i < int32(model.materials.size()); i++)
     {
         tinygltf::Material& gltf_material = model.materials[i];
+
+        if (HasTransmissionExt(gltf_material))
+        {
+            float ior = float(GetIOR(gltf_material));
+            g_materials.push_back(scene.AddMaterial<DielectricMaterial>(ior));
+            continue;
+        }
+
         tinygltf::PbrMetallicRoughness& pbr = gltf_material.pbrMetallicRoughness;
 
         TextureIndex basecolor_texture, metallic_texture, roughness_texture, emissive_texture;
@@ -396,6 +444,11 @@ static MaterialIndex CreateOBJMaterial(Scene& scene, const tinyobj::material_t& 
     Float metallic_factor = 0;
     Float roughness_factor = 1;
     Vec3 emission_factor = { Float(mat.emission[0]), Float(mat.emission[1]), Float(mat.emission[2]) };
+
+    if (mat.illum == 3)
+    {
+        return scene.AddMaterial<MirrorMaterial>(Vec3{ mat.specular[0], mat.specular[1], mat.specular[2] });
+    }
 
     // Create a texture for the diffuse component if available; otherwise use a constant texture.
     TextureIndex basecolor_texture;
