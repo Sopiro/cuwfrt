@@ -324,8 +324,12 @@ void RayTracer::Denoise()
         next_index = 1 - next_index;
     }
 
-    FinalizeDenoise<<<blocks, threads>>>(
-        &frame_buffer[1 - frame_index], &frame_buffer[frame_index], &sample_buffer[current_index], res, g_buffer[frame_index]
+    FinalizeDenoise<<<blocks, threads>>>(&sample_buffer[current_index], res, g_buffer[frame_index]);
+    cudaCheckLastError();
+
+    TemporalAntiAliasing<<<blocks, threads>>>(
+        &frame_buffer[1 - frame_index], &frame_buffer[frame_index], &sample_buffer[current_index], res, g_buffer[1 - frame_index],
+        g_buffer[frame_index]
     );
     cudaCheckLastError();
 

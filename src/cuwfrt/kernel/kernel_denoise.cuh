@@ -381,9 +381,7 @@ __KERNEL__ void FilterSpatial(
     }
 }
 
-__KERNEL__ void FinalizeDenoise(
-    Vec4* prev_frame_buffer, Vec4* out_frame_buffer, Vec4* filtered_buffer, Point2i res, GBuffer g_buffer
-)
+__KERNEL__ void FinalizeDenoise(Vec4* filtered_buffer, Point2i res, GBuffer g_buffer)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -394,14 +392,72 @@ __KERNEL__ void FinalizeDenoise(
     Vec4 albedo = g_buffer.albedo[index];
     if (albedo.w)
     {
-        out_frame_buffer[index] = ToSRGB(filtered_buffer[index] * albedo);
+        filtered_buffer[index] = filtered_buffer[index] * albedo;
     }
     else
     {
-        out_frame_buffer[index] = ToSRGB(albedo);
+        filtered_buffer[index] = albedo;
 
         g_buffer.albedo[index] = Vec4(0);
     }
+}
+
+// https://advances.realtimerendering.com/s2014/epic/TemporalAA.pptx
+__KERNEL__ void TemporalAntiAliasing(
+    Vec4* prev_frame_buffer, Vec4* out_frame_buffer, Vec4* filtered_buffer, Point2i res, GBuffer prev_g_buffer, GBuffer g_buffer
+)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    if (x >= res.x || y >= res.y) return;
+    const int32 index = y * res.x + x;
+
+    Float alpha = 1.0f;
+    Vec4 color0;
+    Vec4 color1 = ToSRGB(filtered_buffer[index]);
+
+    Point2i p0 = g_buffer.motion[index];
+    int32 index0 = p0.x + p0.y * res.x;
+
+    if (p0.x >= 0 && p0.x < res.x && p0.y >= 0 && p0.y < res.y && g_buffer.position[index].w > 0)
+    {
+        color0 = RGBtoYUV(ToLinearRGB(prev_frame_buffer[index0]));
+
+        Float length = sqrtf(Dist2(p0, Point2i(x, y)));
+        const Float sigma = 2.0f;
+        Float w = exp(-length * sigma);
+        alpha = Lerp(1.0f, 0.1f, w);
+
+        Vec2 uv(Float(x) / res.x, Float(y) / res.y);
+        Vec2 d(1.0f / res.x, 1.0f / res.y);
+
+        // Clamp color in Y'UV space
+        Vec4 c1 = RGBtoYUV(SampleTexture(filtered_buffer, res, uv + Vec2(-d.x, d.y), TexCoordFilter::clamp));
+        Vec4 c2 = RGBtoYUV(SampleTexture(filtered_buffer, res, uv + Vec2(0, d.y), TexCoordFilter::clamp));
+        Vec4 c3 = RGBtoYUV(SampleTexture(filtered_buffer, res, uv + Vec2(d.x, d.y), TexCoordFilter::clamp));
+        Vec4 c4 = RGBtoYUV(SampleTexture(filtered_buffer, res, uv + Vec2(-d.x, 0), TexCoordFilter::clamp));
+        Vec4 c5 = RGBtoYUV(SampleTexture(filtered_buffer, res, uv + Vec2(d.x, 0), TexCoordFilter::clamp));
+        Vec4 c6 = RGBtoYUV(SampleTexture(filtered_buffer, res, uv + Vec2(-d.x, -d.y), TexCoordFilter::clamp));
+        Vec4 c7 = RGBtoYUV(SampleTexture(filtered_buffer, res, uv + Vec2(0, -d.y), TexCoordFilter::clamp));
+        Vec4 c8 = RGBtoYUV(SampleTexture(filtered_buffer, res, uv + Vec2(d.x, -d.y), TexCoordFilter::clamp));
+
+        Vec4 min;
+        min.x = Min(c1.x, c2.x, c3.x, c4.x, c5.x, c6.x, c7.x, c8.x);
+        min.y = Min(c1.y, c2.y, c3.y, c4.y, c5.y, c6.y, c7.y, c8.y);
+        min.z = Min(c1.z, c2.z, c3.z, c4.z, c5.z, c6.z, c7.z, c8.z);
+        min.w = 1.0f;
+
+        Vec4 max;
+        max.x = Max(c1.x, c2.x, c3.x, c4.x, c5.x, c6.x, c7.x, c8.x);
+        max.y = Max(c1.y, c2.y, c3.y, c4.y, c5.y, c6.y, c7.y, c8.y);
+        max.z = Max(c1.z, c2.z, c3.z, c4.z, c5.z, c6.z, c7.z, c8.z);
+        max.w = 1.0f;
+
+        color0 = Max(Min(color0, max), min);
+        color0 = ToSRGB(YUVtoRGB(color0));
+    }
+
+    out_frame_buffer[index] = Lerp(color0, color1, alpha);
 }
 
 } // namespace cuwfrt
