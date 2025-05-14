@@ -441,13 +441,16 @@ void LoadGLTF(Scene& scene, std::filesystem::path filename, const Transform& tra
 static MaterialIndex CreateOBJMaterial(Scene& scene, const tinyobj::material_t& mat, const std::string& root)
 {
     Vec3 basecolor_factor = { Float(mat.diffuse[0]), Float(mat.diffuse[1]), Float(mat.diffuse[2]) };
-    Float metallic_factor = 0;
-    Float roughness_factor = 1;
     Vec3 emission_factor = { Float(mat.emission[0]), Float(mat.emission[1]), Float(mat.emission[2]) };
 
     if (mat.illum == 3)
     {
         return scene.AddMaterial<MirrorMaterial>(Vec3{ mat.specular[0], mat.specular[1], mat.specular[2] });
+    }
+
+    if (emission_factor != Vec3::zero)
+    {
+        return scene.AddMaterial<DiffuseLightMaterial>(emission_factor);
     }
 
     // Create a texture for the diffuse component if available; otherwise use a constant texture.
@@ -463,10 +466,6 @@ static MaterialIndex CreateOBJMaterial(Scene& scene, const tinyobj::material_t& 
         basecolor_texture = scene.AddTexture({ .type = constant_texture, .color = basecolor_factor });
     }
 
-    // Use constant textures for metallic/roughness as OBJ does not provide them.
-    TextureIndex metallic_texture = scene.AddTexture({ .type = constant_texture, .color = Vec3(metallic_factor) });
-    TextureIndex roughness_texture = scene.AddTexture({ .type = constant_texture, .color = Vec3(roughness_factor) });
-
     // // Use the bump texture as a normal texture if available.
     // TextureIndex normal_texture;
     // if (!mat.bump_texname.empty())
@@ -474,18 +473,8 @@ static MaterialIndex CreateOBJMaterial(Scene& scene, const tinyobj::material_t& 
     //     normal_texture = scene.AddTexture({ .type = image_texture, .filename = root + mat.bump_texname, .non_color = true });
     // }
 
-    // Create an emission texture if provided, otherwise use a constant emission texture.
-    TextureIndex emission_texture;
-    if (!mat.emissive_texname.empty())
-    {
-        emission_texture = scene.AddTexture({ .type = image_texture, .filename = root + mat.emissive_texname });
-    }
-    else
-    {
-        emission_texture = scene.AddTexture({ .type = constant_texture, .color = emission_factor });
-    }
-
-    return scene.AddMaterial<PBRMaterial>(basecolor_texture, metallic_texture, roughness_texture, emission_texture);
+    // Assume its diffuse material as OBJ does not provide PBR materials.
+    return scene.AddMaterial<DiffuseMaterial>(basecolor_texture);
 }
 
 // Structure to accumulate mesh data grouped by material.

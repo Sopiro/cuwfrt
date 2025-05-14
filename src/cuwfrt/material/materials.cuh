@@ -52,9 +52,9 @@ public:
         return Vec3(0);
     }
 
-    __GPU__ Vec3 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
+    __GPU__ Vec4 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
     {
-        return Vec3(0);
+        return Vec4(0);
     }
 
     Vec3 emission;
@@ -120,17 +120,17 @@ public:
         return Lambertian(scene, isect);
     }
 
-    __GPU__ Vec3 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
+    __GPU__ Vec4 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
     {
         if (r.x < 0)
         {
             Point2 uv = triangle::GetTexcoord(scene, isect);
-            Vec3 tex = SampleTexture(scene, TextureIndex(r.z), uv);
-            return tex;
+            Vec3 albedo = SampleTexture(scene, TextureIndex(r.z), uv) + Vec3(1e-4);
+            return { albedo, 1 };
         }
         else
         {
-            return r;
+            return { r, 1 };
         }
     }
 
@@ -188,9 +188,9 @@ public:
         return Vec3(0);
     }
 
-    __GPU__ Vec3 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
+    __GPU__ Vec4 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
     {
-        return reflectance;
+        return { reflectance, 1 };
     }
 
     Vec3 reflectance;
@@ -273,9 +273,9 @@ public:
         return Vec3(0);
     }
 
-    __GPU__ Vec3 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
+    __GPU__ Vec4 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
     {
-        return rho(this, scene, isect, wo);
+        return { rho(this, scene, isect, wo), 1 };
     }
 
     Float eta;
@@ -455,9 +455,9 @@ public:
         return f_d + f_s;
     }
 
-    __GPU__ Vec3 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
+    __GPU__ Vec4 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
     {
-        return rho(this, scene, isect, wo);
+        return { rho(this, scene, isect, wo), 1 };
     }
 
     TextureIndex tex_basecolor, tex_metallic, tex_roughness, tex_emissive;
@@ -486,7 +486,7 @@ inline __GPU__ Vec3 Material::BSDF(const GPUScene* scene, const Intersection& is
     return Dispatch([&](auto mat) { return mat->BSDF(scene, isect, wo, wi); });
 }
 
-inline __GPU__ Vec3 Material::Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
+inline __GPU__ Vec4 Material::Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const
 {
     return Dispatch([&](auto mat) { return mat->Albedo(scene, isect, wo); });
 }

@@ -121,11 +121,9 @@ __KERNEL__ void PrepareDenoise(
     }
 
     // Demomuldate albedo. We are going to filter the illumination only
-    if (g_buffer.albedo[index] != Vec4(0))
+    if (g_buffer.albedo[index].w > 0)
     {
         out_buffer[index] = in_buffer[index] / g_buffer.albedo[index];
-
-        g_buffer.albedo[index].w = 1;
     }
     else
     {
@@ -385,14 +383,13 @@ __KERNEL__ void FinalizeDenoise(Vec4* filtered_buffer, Point2i res, GBuffer g_bu
 
     // Remodulate albedo
     Vec4 albedo = g_buffer.albedo[index];
-    if (albedo.w)
+    if (albedo.w > 0)
     {
         filtered_buffer[index] = filtered_buffer[index] * albedo;
     }
     else
     {
         filtered_buffer[index] = albedo;
-
         g_buffer.albedo[index] = Vec4(0);
     }
 }

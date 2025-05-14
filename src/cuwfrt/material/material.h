@@ -45,7 +45,7 @@ public:
     ) const;
     __GPU__ Float PDF(const GPUScene* scene, const Intersection& isect, const Vec3& wo, const Vec3& wi) const;
     __GPU__ Vec3 BSDF(const GPUScene* scene, const Intersection& isect, const Vec3& wo, const Vec3& wi) const;
-    __GPU__ Vec3 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const;
+    __GPU__ Vec4 Albedo(const GPUScene* scene, const Intersection& isect, const Vec3& wo) const;
 };
 
 using MaterialIndex = PolymorphicVector<Material>::Index;

@@ -97,7 +97,7 @@ __KERNEL__ void PathTraceNEE(
         {
             g_buffer.position[index] = Vec4(isect.point, isect.t);
             g_buffer.normal[index] = Vec4(isect.shading_normal, isect.prim);
-            g_buffer.albedo[index] = Vec4(mat->Albedo(&scene, isect, wo), 0);
+            g_buffer.albedo[index] = mat->Albedo(&scene, isect, wo);
         }
 
         if (Vec3 Le = mat->Le(&scene, isect, wo); Le != Vec3(0))

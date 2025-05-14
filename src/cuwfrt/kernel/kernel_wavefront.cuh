@@ -154,7 +154,7 @@ __KERNEL__ void Closest(
     {
         g_buffer.position[pixel_index] = Vec4(isect.point, isect.t);
         g_buffer.normal[pixel_index] = Vec4(isect.shading_normal, isect.prim);
-        g_buffer.albedo[pixel_index] = Vec4(mat->Albedo(&scene, isect, wo), 0);
+        g_buffer.albedo[pixel_index] = mat->Albedo(&scene, isect, wo);
     }
 
     if (Vec3 Le = mat->Le(&scene, isect, wo); Le != Vec3(0))

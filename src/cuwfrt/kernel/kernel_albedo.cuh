@@ -38,7 +38,7 @@ __KERNEL__ void RaytraceAlbedo(
         g_buffer.albedo[index] = Vec4(0);
 
         Material* m = GetMaterial(&scene, isect.prim);
-        sample_buffer[index] = Vec4(m->Albedo(&scene, isect, -ray.d), 1);
+        sample_buffer[index] = m->Albedo(&scene, isect, -ray.d);
     }
     else
     {
