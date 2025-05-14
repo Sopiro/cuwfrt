@@ -25,6 +25,7 @@ Wavefront raytracer written in CUDA
 ![sc6](.github/screenshot6.png) | ![sc7](.github/screenshot7.png)
 |--|--|
 
+![denoised](.github/denoise3.png)
 
 ## Architecture Diagram
 ![diagram](.github/diagram.drawio.png)
