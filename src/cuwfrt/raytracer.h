@@ -44,7 +44,7 @@ public:
     void AccumulateSamples(bool render);
     void RenderAccumulated();
 
-    void Denoise();
+    void Denoise(bool accumulated);
 
     void DrawFrame();
 

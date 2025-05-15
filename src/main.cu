@@ -33,6 +33,7 @@ static Float focus_dist = 1;
 
 static int32 selection = RayTracer::num_kernels - 1;
 static bool denoise = false;
+static bool denoise_accumulation = true;
 
 static Vec3 GetForward()
 {
@@ -82,6 +83,8 @@ static void Render()
     if (Input::IsKeyPressed(GLFW_KEY_GRAVE_ACCENT)) collapsed = !collapsed;
     ImGui::SetNextWindowCollapsed(collapsed, ImGuiCond_None);
 
+    bool updated = false;
+
     ImGui::SetNextWindowPos({ 4, 4 }, ImGuiCond_Once, { 0.0f, 0.0f });
     if (ImGui::Begin("cuwfrt", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
@@ -115,20 +118,10 @@ static void Render()
         }
         ImGui::Separator();
         if (ImGui::Checkbox("Render sky", &options.render_sky)) time = 0;
-        if (ImGui::Checkbox("Denoise", &denoise))
-        {
-            if (time >= max_samples)
-            {
-                if (denoise)
-                {
-                    raytracer->Denoise();
-                }
-                else
-                {
-                    raytracer->RenderAccumulated();
-                }
-            }
-        }
+        updated |= ImGui::Checkbox("Denoise", &denoise);
+        ImGui::SameLine();
+        updated |= ImGui::Checkbox("accumulation", &denoise_accumulation);
+
         if (ImGui::Combo("##", &selection, RayTracer::kernel_names, RayTracer::num_kernels)) time = 0;
     }
 
@@ -159,11 +152,22 @@ static void Render()
         if (denoise)
         {
             raytracer->AccumulateSamples(false);
-            raytracer->Denoise();
+            raytracer->Denoise(denoise_accumulation);
         }
         else
         {
             raytracer->AccumulateSamples(true);
+        }
+    }
+    else if (updated)
+    {
+        if (denoise)
+        {
+            raytracer->Denoise(true);
+        }
+        else
+        {
+            raytracer->RenderAccumulated();
         }
     }
 
@@ -199,6 +203,16 @@ static void BuildScene()
 
     MaterialIndex glass = scene.AddMaterial<DielectricMaterial>(1.5f, Vec3(1.0f));
     SetLoaderFallbackMaterial(glass);
+
+    // LoadModel(scene, "C:/Users/sopir/Desktop/assets/fireplace_room/fireplace_room.obj", Transform(Vec3(0), identity,
+    // Vec3(1.0f)));
+
+    // LoadModel(scene, "C:/Users/sopir/Desktop/assets/living_room/living_room.obj", Transform(Vec3(0), identity, Vec3(0.1f)));
+
+    // LoadModel(
+    //     scene, "Z:/dev/cpp_workspace/Bulbit/res/sun_temple/sun_temple.gltf",
+    //     Transform(Vec3(0), Quat::FromEuler({ pi / 2, 0, 0 }), Vec3(0.001f))
+    // );
 
     // LoadModel(scene, "res/lucy.obj", Transform(Vec3(0.66f, 0.28f, -0.33f), identity, Vec3(0.5f)));
 
@@ -373,7 +387,7 @@ static void Init()
     player.speed = 1.0f;
     player.damping = 100.0f;
 
-    options.max_bounces = 3;
+    options.max_bounces = 2;
 
     raytracer = new RayTracer(window, &scene, &camera, &options);
 

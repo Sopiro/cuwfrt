@@ -279,7 +279,7 @@ void RayTracer::AccumulateSamples(bool render)
     cudaCheck(cudaDeviceSynchronize());
 }
 
-void RayTracer::Denoise()
+void RayTracer::Denoise(bool accumulated)
 {
     const dim3 threads(16, 16);
     const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
@@ -288,8 +288,8 @@ void RayTracer::Denoise()
     int32 next_index = 1 - frame_index;
 
     PrepareDenoise<<<blocks, threads>>>(
-        &accumulation_buffer, &sample_buffer[current_index], g_buffer[frame_index], h_buffer[frame_index],
-        h_camera[1 - frame_index], res
+        accumulated ? &accumulation_buffer : &sample_buffer[current_index], &sample_buffer[current_index], g_buffer[frame_index],
+        h_buffer[frame_index], h_camera[1 - frame_index], res
     );
     cudaCheckLastError();
 
@@ -316,7 +316,7 @@ void RayTracer::Denoise()
 
         FilterSpatial<<<blocks, threads>>>(
             &sample_buffer[current_index], &sample_buffer[next_index], res, step, g_buffer[frame_index], h_buffer[current_index],
-            h_buffer[1 - current_index], spp
+            h_buffer[1 - current_index], accumulated ? spp : 1
         );
         cudaCheckLastError();
 
