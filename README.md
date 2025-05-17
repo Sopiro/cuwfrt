@@ -14,7 +14,7 @@ Wavefront raytracer written in CUDA
   - [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader) and [tinygltf](https://github.com/syoyo/tinygltf)
 - Interaction with [imgui](https://github.com/ocornut/imgui) and CUDA/OpenGL interop
 
----
+## Screenshots
 
 ![sc1](.github/screenshot.png) | ![sc2](.github/screenshot2.png)
 |--|--|
@@ -25,7 +25,12 @@ Wavefront raytracer written in CUDA
 ![sc6](.github/screenshot6.png) | ![sc7](.github/screenshot7.png)
 |--|--|
 
+### Denoising
+
 ![denoised](.github/denoise3.png)
+
+![denoise](.github/denoise4.png) | ![denoise](.github/denoise5.png)
+|--|--|
 
 ## Architecture Diagram
 ![diagram](.github/diagram.drawio.png)
