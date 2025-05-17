@@ -57,7 +57,7 @@ EdgeStoppingWeight(Point2i p, Point2i q, Float z_p, Float z_q, Vec2 dzdp, Vec3 n
 {
     constexpr Float sigma_z = 1;
     constexpr Float sigma_n = 128;
-    constexpr Float sigma_l = 2; // 4 in paper
+    constexpr Float sigma_l = 4; // 4 in paper
 
     Float w_z = abs(z_p - z_q) / (sigma_z * abs(Dot(dzdp, Vec2(p - q))) + 1e-9);
 
@@ -329,8 +329,6 @@ __KERNEL__ void FilterSpatial(
 
     Float sum_weights = 0;
     Vec4 sum_l(0);
-
-    Float sum_weights2 = 0;
     Float sum_var(0);
 
     // a-trous wavelet filter
@@ -356,14 +354,12 @@ __KERNEL__ void FilterSpatial(
 
             sum_weights += w;
             sum_l += w * in_sample_buffer[index_q];
-
-            sum_weights2 += w * w;
             sum_var += w * w * in_h_buffer.moments[index_q].z;
         }
     }
 
     sum_l /= sum_weights;
-    sum_var /= sum_weights2;
+    sum_var /= sum_weights * sum_weights;
 
     out_sample_buffer[index] = sum_l;
     out_h_buffer.moments[index].z = sum_var;
