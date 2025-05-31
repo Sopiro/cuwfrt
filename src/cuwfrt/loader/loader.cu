@@ -171,7 +171,7 @@ static void LoadMaterials(Scene& scene, tinygltf::Model& model)
         }
 
         g_materials.push_back(
-            scene.AddMaterial<PBRMaterial>(basecolor_texture, metallic_texture, roughness_texture, emissive_texture)
+            scene.AddMaterial<MetallicRoughnessMaterial>(basecolor_texture, metallic_texture, roughness_texture, emissive_texture)
         );
     }
 }

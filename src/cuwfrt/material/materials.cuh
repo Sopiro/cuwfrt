@@ -282,11 +282,11 @@ public:
     half r[3];
 };
 
-class alignas(16) PBRMaterial : public Material
+class alignas(16) MetallicRoughnessMaterial : public Material
 {
 public:
-    PBRMaterial(TextureIndex basecolor, TextureIndex matallic, TextureIndex roughness, TextureIndex emissive = -1)
-        : Material(Material::TypeIndexOf<PBRMaterial>())
+    MetallicRoughnessMaterial(TextureIndex basecolor, TextureIndex matallic, TextureIndex roughness, TextureIndex emissive = -1)
+        : Material(Material::TypeIndexOf<MetallicRoughnessMaterial>())
         , tex_basecolor{ basecolor }
         , tex_metallic{ matallic }
         , tex_roughness{ roughness }
@@ -441,16 +441,16 @@ public:
         wm.Normalize();
 
         Point2 uv = triangle::GetTexcoord(scene, isect);
-        Vec3 basecolor = SampleTexture(scene, tex_basecolor, uv);
+        Vec3 color = SampleTexture(scene, tex_basecolor, uv);
         Float metallic = SampleTexture(scene, tex_metallic, uv).z;
         Float roughness = SampleTexture(scene, tex_roughness, uv).y;
         Float alpha = mf::RoughnessToAlpha(roughness);
 
-        Vec3 f0 = mf::F0(basecolor, metallic);
+        Vec3 f0 = mf::F0(color, metallic);
         Vec3 F = mf::F_Schlick(f0, Dot(wi_local, wm));
 
         Vec3 f_s = F * mf::D(wm, alpha, alpha) * mf::G(wo_local, wi_local, alpha, alpha) / (4 * cos_theta_i * cos_theta_o);
-        Vec3 f_d = (Vec3(1) - F) * (1 - metallic) * (basecolor * inv_pi);
+        Vec3 f_d = (Vec3(1) - F) * (1 - metallic) * (color * inv_pi);
 
         return f_d + f_s;
     }

@@ -25,7 +25,7 @@ using Materials = TypePack<
     class DiffuseMaterial,
     class MirrorMaterial,
     class DielectricMaterial,
-    class PBRMaterial>;
+    class MetallicRoughnessMaterial>;
 
 class Material : public DynamicDispatcher<Materials>
 {
