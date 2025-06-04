@@ -1,13 +1,10 @@
 #include "alzartak/camera.h"
-
-#include "cuwfrt/raytracer.h"
-
-#include "cuwfrt/scene/builder.h"
-#include "cuwfrt/util/parallel.h"
-
-#include "cuwfrt/loader/loader.h"
+#include "alzartak/parallel.h"
 
 #include "cuwfrt/cuda_error.h"
+#include "cuwfrt/loader/loader.h"
+#include "cuwfrt/raytracer.h"
+#include "cuwfrt/scene/builder.h"
 
 #include <chrono>
 

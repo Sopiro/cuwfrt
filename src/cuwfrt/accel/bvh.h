@@ -1,10 +1,11 @@
 #pragma once
 
-#include "cuwfrt/geometry/primitive.h"
-#include "cuwfrt/util/parallel.h"
-
 #include <memory>
 #include <memory_resource>
+
+#include "alzartak/parallel.h"
+
+#include "cuwfrt/geometry/primitive.h"
 
 namespace cuwfrt
 {
@@ -57,7 +58,7 @@ private:
     };
 
     BuildNode* BuildRecursive(
-        ThreadLocal<std::pmr::polymorphic_allocator<std::byte>>& thread_allocators,
+        alzartak::ThreadLocal<std::pmr::polymorphic_allocator<std::byte>>& thread_allocators,
         std::span<BVHPrimitive> primitive_span,
         std::atomic<int32>* total_nodes,
         std::atomic<int32>* ordered_prims_offset,

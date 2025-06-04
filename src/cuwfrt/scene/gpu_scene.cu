@@ -1,6 +1,7 @@
 #include "cuwfrt/cuda_api.h"
 #include "cuwfrt/cuda_error.h"
-#include "cuwfrt/util/async_job.h"
+
+#include "alzartak/async_job.h"
 
 #include "gpu_scene.h"
 #include "scene.h"
@@ -12,7 +13,7 @@ void GPUResources::Init(const Scene* cpu_scene)
 {
     // Build BVH asynchronously
     std::unique_ptr<BVH> bvh;
-    auto j = RunAsync([cpu_scene, &bvh]() {
+    auto j = alzartak::RunAsync([cpu_scene, &bvh]() {
         bvh = std::make_unique<BVH>(cpu_scene->aabbs);
         return true;
     });
