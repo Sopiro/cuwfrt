@@ -9,7 +9,7 @@ Wavefront raytracer written in CUDA
 - Temporal Anti-Aliasing [Karis (2014)](https://advances.realtimerendering.com/s2014/epic/TemporalAA.pptx)
 - Binary SAH BVH upload to GPU
 - Materials
-  - Diffuse, Mirror, Dielectric, PBR(Trowbridge-Reitz GGX) and Diffuse Area Light
+  - Diffuse, Mirror, Dielectric, MetallicRoughness and DiffuseAreaLight
 - Model loaders
   - [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader) and [tinygltf](https://github.com/syoyo/tinygltf)
 - Interaction with [imgui](https://github.com/ocornut/imgui) and CUDA/OpenGL interop
