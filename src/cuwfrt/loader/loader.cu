@@ -443,14 +443,20 @@ static MaterialIndex CreateOBJMaterial(Scene& scene, const tinyobj::material_t& 
     Vec3 basecolor_factor = { Float(mat.diffuse[0]), Float(mat.diffuse[1]), Float(mat.diffuse[2]) };
     Vec3 emission_factor = { Float(mat.emission[0]), Float(mat.emission[1]), Float(mat.emission[2]) };
 
-    if (mat.illum == 3)
-    {
-        return scene.AddMaterial<MirrorMaterial>(Vec3{ mat.specular[0], mat.specular[1], mat.specular[2] });
-    }
-
     if (emission_factor != Vec3::zero)
     {
         return scene.AddMaterial<DiffuseLightMaterial>(emission_factor);
+    }
+
+    switch (mat.illum)
+    {
+    case 3:
+    case 5:
+        return scene.AddMaterial<MirrorMaterial>(Vec3{ mat.specular[0], mat.specular[1], mat.specular[2] });
+    case 7:
+        return scene.AddMaterial<DielectricMaterial>(mat.ior, Vec3{ mat.specular[0], mat.specular[1], mat.specular[2] });
+    default:
+        break;
     }
 
     // Create a texture for the diffuse component if available; otherwise use a constant texture.
