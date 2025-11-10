@@ -1,7 +1,6 @@
 #pragma once
 
 #include "cuwfrt/scene/scene.h"
-#include <filesystem>
 
 namespace cuwfrt
 {

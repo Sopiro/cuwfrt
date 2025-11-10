@@ -1,12 +1,10 @@
 #include "alzartak/camera.h"
-#include "alzartak/parallel.h"
+#include "wak/parallel.h"
 
 #include "cuwfrt/cuda_error.h"
 #include "cuwfrt/loader/loader.h"
 #include "cuwfrt/raytracer.h"
 #include "cuwfrt/scene/builder.h"
-
-#include <chrono>
 
 using namespace alzartak;
 
@@ -195,7 +193,7 @@ static void BuildScene()
     // Float metallic = 1;
     // Float roughness = 0.2f;
     // TextureIndex arm = scene.AddTexture({ .type = constant_texture, .color = { 0, roughness, metallic } });
-    // MaterialIndex gold = scene.AddMaterial<PBRMaterial>(basecolor, arm, arm);
+    // MaterialIndex gold = scene.AddMaterial<MetallicRoughnessMaterial>(basecolor, arm, arm);
     // SetLoaderFallbackMaterial(gold);
 
     MaterialIndex glass = scene.AddMaterial<DielectricMaterial>(1.5f, Vec3(1.0f));

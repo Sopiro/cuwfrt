@@ -3,7 +3,7 @@
 #include <memory>
 #include <memory_resource>
 
-#include "alzartak/parallel.h"
+#include "wak/parallel.h"
 
 #include "cuwfrt/geometry/primitive.h"
 
@@ -58,7 +58,7 @@ private:
     };
 
     BuildNode* BuildRecursive(
-        alzartak::ThreadLocal<std::pmr::polymorphic_allocator<std::byte>>& thread_allocators,
+        wak::ThreadLocal<std::pmr::polymorphic_allocator<std::byte>>& thread_allocators,
         std::span<BVHPrimitive> primitive_span,
         std::atomic<int32>* total_nodes,
         std::atomic<int32>* ordered_prims_offset,

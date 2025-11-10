@@ -1,12 +1,11 @@
 #include "texture.h"
 
-#include "alzartak/image.h"
+#include "wak/image.h"
+
 #include "cuwfrt/scene/gpu_scene.h"
 
 namespace cuwfrt
 {
-
-using namespace alzartak;
 
 Texture::Texture(const TextureDesc& td)
 {
@@ -21,7 +20,7 @@ Texture::Texture(const TextureDesc& td)
     break;
     case image_texture:
     {
-        image = alzartak::ReadImage4(td.filename, td.non_color);
+        image = wak::ReadImage4(td.filename, td.non_color);
         if (!image)
         {
             std::cout << "Faild to read texture: " << td.filename << std::endl;

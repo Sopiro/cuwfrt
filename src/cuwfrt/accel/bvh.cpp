@@ -1,12 +1,10 @@
 #include "bvh.h"
 
-#include "alzartak/parallel_for.h"
+#include "wak/parallel_for.h"
 
 #include "cuwfrt/geometry/intersection.h"
 
 #include <algorithm>
-
-using namespace alzartak;
 
 namespace cuwfrt
 {

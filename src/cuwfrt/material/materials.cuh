@@ -126,11 +126,11 @@ public:
         {
             Point2 uv = triangle::GetTexcoord(scene, isect);
             Vec3 albedo = SampleTexture(scene, TextureIndex(r.z), uv);
-            return { albedo + Vec3(1e-2), 1 };
+            return { albedo + Vec3(1e-2f), 1 };
         }
         else
         {
-            return { r + Vec3(1e-2), 1 };
+            return { r + Vec3(1e-2f), 1 };
         }
     }
 
