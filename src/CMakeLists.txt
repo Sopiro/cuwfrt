@@ -11,22 +11,20 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(alzartak)
 
 # Include tinyobj
-FetchContent_Declare(
+FetchContent_Populate(
     tinyobj
     GIT_REPOSITORY "https://github.com/tinyobjloader/tinyobjloader.git"
     GIT_TAG release
 )
-FetchContent_Populate(tinyobj)
 
 # Include tinygltf
 set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
 set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
-FetchContent_Declare(
+FetchContent_Populate(
     tinygltf
     GIT_REPOSITORY "https://github.com/syoyo/tinygltf.git"
     GIT_TAG v2.9.5
 )
-FetchContent_Populate(tinygltf)
 
 file(GLOB_RECURSE SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/*.cu)
 file(GLOB_RECURSE HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h ${CMAKE_CURRENT_SOURCE_DIR}/*.cuh)
