@@ -7,17 +7,17 @@ namespace cuwfrt
 {
 
 // Heuristic functions for MIS
-inline __CPU_GPU__ Float BalanceHeuristic(Float pdf_f, Float pdf_g)
+inline __GPU__ Float BalanceHeuristic(Float pdf_f, Float pdf_g)
 {
     return pdf_f / (pdf_f + pdf_g);
 }
 
-inline __CPU_GPU__ Float BalanceHeuristic(int32 nf, Float pdf_f, int32 ng, Float pdf_g)
+inline __GPU__ Float BalanceHeuristic(int32 nf, Float pdf_f, int32 ng, Float pdf_g)
 {
     return (nf * pdf_f) / (nf * pdf_f + ng * pdf_g);
 }
 
-inline __CPU_GPU__ Float PowerHeuristic(Float pdf_f, Float pdf_g)
+inline __GPU__ Float PowerHeuristic(Float pdf_f, Float pdf_g)
 {
     Float f2 = pdf_f * pdf_f;
     Float g2 = pdf_g * pdf_g;
@@ -25,7 +25,7 @@ inline __CPU_GPU__ Float PowerHeuristic(Float pdf_f, Float pdf_g)
     return f2 / (f2 + g2);
 }
 
-inline __CPU_GPU__ Float PowerHeuristic(int32 nf, Float pdf_f, int32 ng, Float pdf_g)
+inline __GPU__ Float PowerHeuristic(int32 nf, Float pdf_f, int32 ng, Float pdf_g)
 {
     Float f = nf * pdf_f;
     Float g = ng * pdf_g;
@@ -33,7 +33,7 @@ inline __CPU_GPU__ Float PowerHeuristic(int32 nf, Float pdf_f, int32 ng, Float p
     return (f * f) / (f * f + g * g);
 }
 
-inline __CPU_GPU__ Vec3 SampleUniformHemisphere(const Point2& u)
+inline __GPU__ Vec3 SampleUniformHemisphere(const Point2& u)
 {
     Float z = u[0];
     Float r = std::sqrt(std::fmax(0.0f, 1 - z * z));
@@ -42,12 +42,12 @@ inline __CPU_GPU__ Vec3 SampleUniformHemisphere(const Point2& u)
     return Vec3(r * std::cos(phi), r * std::sin(phi), z);
 }
 
-inline __CPU_GPU__ Float UniformHemispherePDF()
+inline __GPU__ Float UniformHemispherePDF()
 {
     return inv_two_pi;
 }
 
-inline __CPU_GPU__ Vec3 SampleUniformSphere(const Point2& u)
+inline __GPU__ Vec3 SampleUniformSphere(const Point2& u)
 {
     Float z = 1 - 2 * u[0];
     Float r = std::sqrt(std::fmax(0.0f, 1 - z * z));
@@ -59,13 +59,13 @@ inline __CPU_GPU__ Vec3 SampleUniformSphere(const Point2& u)
     return Vec3(x, y, z);
 }
 
-inline __CPU_GPU__ Float UniformSpherePDF()
+inline __GPU__ Float UniformSpherePDF()
 {
     return inv_four_pi;
 }
 
 // z > 0
-inline __CPU_GPU__ Vec3 SampleCosineHemisphere(const Point2& u)
+inline __GPU__ Vec3 SampleCosineHemisphere(const Point2& u)
 {
     Float z = std::sqrt(1 - u[1]);
 
@@ -77,12 +77,12 @@ inline __CPU_GPU__ Vec3 SampleCosineHemisphere(const Point2& u)
     return Vec3(x, y, z);
 }
 
-inline __CPU_GPU__ Float CosineHemispherePDF(Float cos_theta)
+inline __GPU__ Float CosineHemispherePDF(Float cos_theta)
 {
     return cos_theta * inv_pi;
 }
 
-inline __CPU_GPU__ Vec3 SampleInsideUnitSphere(const Point2& u)
+inline __GPU__ Vec3 SampleInsideUnitSphere(const Point2& u)
 {
 #if 1
     Float theta = two_pi * u[0];
@@ -107,24 +107,24 @@ inline __CPU_GPU__ Vec3 SampleInsideUnitSphere(const Point2& u)
 #endif
 }
 
-inline __CPU_GPU__ Vec3 SampleUniformUnitDiskXY(const Point2& u)
+inline __GPU__ Vec3 SampleUniformUnitDiskXY(const Point2& u)
 {
     Float r = std::sqrt(u.x);
     Float theta = two_pi * u.y;
     return Vec3(r * std::cos(theta), r * std::sin(theta), 0);
 }
 
-inline __CPU_GPU__ Float SampleExponential(Float u, Float a)
+inline __GPU__ Float SampleExponential(Float u, Float a)
 {
     return -std::log(1 - u) / a;
 }
 
-inline __CPU_GPU__ Float ExponentialPDF(Float x, Float a)
+inline __GPU__ Float ExponentialPDF(Float x, Float a)
 {
     return a * std::exp(-a * x);
 }
 
-inline __CPU_GPU__ Vec3 Sample_GGX(Vec3 wo, Float alpha2, Point2 u)
+inline __GPU__ Vec3 Sample_GGX(Vec3 wo, Float alpha2, Point2 u)
 {
     WakNotUsed(wo);
 
@@ -144,7 +144,7 @@ inline __CPU_GPU__ Vec3 Sample_GGX(Vec3 wo, Float alpha2, Point2 u)
 // "Sampling Visible GGX Normals with Spherical Caps" by Dupuy & Benyoub
 // https://gist.github.com/jdupuy/4c6e782b62c92b9cb3d13fbb0a5bd7a0
 // https://cdrdv2-public.intel.com/782052/sampling-visible-ggx-normals.pdf
-inline __CPU_GPU__ Vec3 SampleVNDFHemisphere(Vec3 wo, Point2 u)
+inline __GPU__ Vec3 SampleVNDFHemisphere(Vec3 wo, Point2 u)
 {
     // sample a spherical cap in (-wo.z, 1]
     Float phi = two_pi * u.x;
@@ -160,7 +160,7 @@ inline __CPU_GPU__ Vec3 SampleVNDFHemisphere(Vec3 wo, Point2 u)
     return h;
 }
 
-inline __CPU_GPU__ Vec3 Sample_GGX_VNDF_Dupuy_Benyoub(Vec3 wo, Float alpha_x, Float alpha_y, Point2 u)
+inline __GPU__ Vec3 Sample_GGX_VNDF_Dupuy_Benyoub(Vec3 wo, Float alpha_x, Float alpha_y, Point2 u)
 {
     // warp to the hemisphere configuration
     Vec3 woStd = Normalize(Vec3(wo.x * alpha_x, wo.y * alpha_y, wo.z));
@@ -174,7 +174,7 @@ inline __CPU_GPU__ Vec3 Sample_GGX_VNDF_Dupuy_Benyoub(Vec3 wo, Float alpha_x, Fl
 
 // Source: "Sampling the GGX Distribution of Visible Normals" by Heitz
 // https://jcgt.org/published/0007/04/01/
-inline __CPU_GPU__ Vec3 Sample_GGX_VNDF_Heitz(Vec3 wo, Float alpha_x, Float alpha_y, Point2 u)
+inline __GPU__ Vec3 Sample_GGX_VNDF_Heitz(Vec3 wo, Float alpha_x, Float alpha_y, Point2 u)
 {
     // Section 3.2: transforming the view direction to the hemisphere configuration
     Vec3 Vh{ alpha_x * wo.x, alpha_y * wo.y, wo.z };
