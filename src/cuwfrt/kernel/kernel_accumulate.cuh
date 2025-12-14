@@ -1,5 +1,6 @@
 #pragma once
 
+#include "device_utils.cuh"
 #include <device_launch_parameters.h>
 
 #include "cuwfrt/raytracer.h"

@@ -11,3 +11,5 @@
 #define __GPU__
 #define __CPU_GPU__
 #endif
+
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
