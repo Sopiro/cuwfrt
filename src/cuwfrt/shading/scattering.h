@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cuwfrt/material/materials.cuh"
+#include "cuwfrt/material/materials.h"
 
 namespace cuwfrt
 {

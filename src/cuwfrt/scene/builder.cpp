@@ -1,5 +1,7 @@
 #include "builder.h"
 
+#include "cuwfrt/scene/scene.h"
+
 namespace cuwfrt
 {
 

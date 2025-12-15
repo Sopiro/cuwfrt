@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cuwfrt/material/materials.cuh"
+#include "cuwfrt/material/materials.h"
 #include "cuwfrt/scene/gpu_scene.h"
 
 #include "device_utils.cuh"

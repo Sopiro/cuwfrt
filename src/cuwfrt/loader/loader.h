@@ -1,9 +1,11 @@
 #pragma once
 
-#include "cuwfrt/scene/scene.h"
+#include "cuwfrt/material/material.h"
 
 namespace cuwfrt
 {
+
+class Scene;
 
 void SetLoaderFlipNormal(bool flip_normal);
 void SetLoaderFlipTexcoord(bool flip_texcoord);

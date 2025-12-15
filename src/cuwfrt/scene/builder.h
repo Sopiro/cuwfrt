@@ -1,9 +1,11 @@
 #pragma once
 
-#include "scene.h"
+#include "cuwfrt/material/material.h"
 
 namespace cuwfrt
 {
+
+class Scene;
 
 void CreateRectXY(Scene& scene, const Transform& transform, MaterialIndex material, const Point2& tc = Point2(1, 1));
 void CreateRectXZ(Scene& scene, const Transform& transform, MaterialIndex material, const Point2& tc = Point2(1, 1));
