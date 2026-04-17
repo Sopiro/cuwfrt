@@ -14,27 +14,27 @@ class Scene;
 struct GPUScene
 {
     // Textures
-    cudaTextureObject_t* tex_objs;
+    cudaTextureObject_t* __restrict__ tex_objs;
 
     // Materials
-    uint8* materials;
-    int32* offsets;
+    uint8* __restrict__ materials;
+    int32* __restrict__ offsets;
 
     // Scene primitives
-    Point3* positions;
-    Vec3* normals;
-    Vec3* tangents;
-    Vec2* texcoords;
-    Vec3i* indices;
-    MaterialIndex* material_indices;
+    Point3* __restrict__ positions;
+    Vec3* __restrict__ normals;
+    Vec3* __restrict__ tangents;
+    Vec2* __restrict__ texcoords;
+    Vec3i* __restrict__ indices;
+    MaterialIndex* __restrict__ material_indices;
 
     // Area lights
-    PrimitiveIndex* light_indices;
+    PrimitiveIndex* __restrict__ light_indices;
     int32 light_count;
 
     // BVH
-    PrimitiveIndex* bvh_primitives;
-    LinearBVHNode* bvh_nodes;
+    PrimitiveIndex* __restrict__ bvh_primitives;
+    LinearBVHNode* __restrict__ bvh_nodes;
 };
 
 struct GPUResources
