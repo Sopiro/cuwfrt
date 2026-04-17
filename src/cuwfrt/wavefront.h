@@ -60,15 +60,6 @@ struct WavefrontPathStates : CudaResource1D
     }
 };
 
-struct WavefrontShadowRay
-{
-    Ray ray;
-    Float visibility;
-
-    Vec3 Li;
-    int32 pixel_index;
-};
-
 template <typename T>
 struct RayQueue : CudaResource1D
 {
@@ -132,6 +123,53 @@ struct RayQueues : CudaResource1D
     }
 };
 
+struct WavefrontShadowRay
+{
+    Ray ray;
+    Float visibility;
+
+    Vec3 Li;
+    int32 pixel_index;
+};
+
+struct WavefrontShadowRays : CudaResource1D
+{
+    // SoA-ed WavefrontShadowRay struct
+    Ray* rays = nullptr;
+    Float* visibilities = nullptr;
+    Vec3* Lis = nullptr;
+    int32* pixel_indices = nullptr;
+
+    void Init(int32 capacity)
+    {
+        cudaCheck(cudaMalloc(&rays, capacity * sizeof(Ray)));
+        cudaCheck(cudaMalloc(&visibilities, capacity * sizeof(Float)));
+        cudaCheck(cudaMalloc(&Lis, capacity * sizeof(Vec3)));
+        cudaCheck(cudaMalloc(&pixel_indices, capacity * sizeof(int32)));
+    }
+
+    void Free()
+    {
+        cudaCheck(cudaFree(rays));
+        cudaCheck(cudaFree(visibilities));
+        cudaCheck(cudaFree(Lis));
+        cudaCheck(cudaFree(pixel_indices));
+    }
+
+    void Resize(int32 capacity)
+    {
+        cudaCheck(cudaFree(rays));
+        cudaCheck(cudaFree(visibilities));
+        cudaCheck(cudaFree(Lis));
+        cudaCheck(cudaFree(pixel_indices));
+
+        cudaCheck(cudaMalloc(&rays, capacity * sizeof(Ray)));
+        cudaCheck(cudaMalloc(&visibilities, capacity * sizeof(Float)));
+        cudaCheck(cudaMalloc(&Lis, capacity * sizeof(Vec3)));
+        cudaCheck(cudaMalloc(&pixel_indices, capacity * sizeof(int32)));
+    }
+};
+
 struct WavefrontResources : CudaResource2D
 {
     static constexpr inline int32 closest_queue_count = Materials::count;
@@ -144,7 +182,8 @@ struct WavefrontResources : CudaResource2D
     RayQueues<int32, closest_queue_count> closest;
 
     RayQueue<int32> miss;
-    RayQueue<WavefrontShadowRay> shadow;
+    WavefrontShadowRays shadow_rays;
+    RayQueue<int32> shadow;
 
     void Init(Point2i res)
     {
@@ -155,6 +194,7 @@ struct WavefrontResources : CudaResource2D
         next.Init(ray_capacity);
         closest.Init(ray_capacity);
         miss.Init(ray_capacity);
+        shadow_rays.Init(ray_capacity);
         shadow.Init(ray_capacity);
     }
 
@@ -165,6 +205,7 @@ struct WavefrontResources : CudaResource2D
         next.Free();
         closest.Free();
         miss.Free();
+        shadow_rays.Free();
         shadow.Free();
     }
 
@@ -177,6 +218,7 @@ struct WavefrontResources : CudaResource2D
         next.Resize(ray_capacity);
         closest.Resize(ray_capacity);
         miss.Resize(ray_capacity);
+        shadow_rays.Resize(ray_capacity);
         shadow.Resize(ray_capacity);
     }
 };

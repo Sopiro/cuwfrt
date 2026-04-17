@@ -120,7 +120,8 @@ __KERNEL__ void Closest(
     int32 closest_ray_count,
     WavefrontPathStates path_states,
     RayQueue<int32> q_next,
-    RayQueue<WavefrontShadowRay> q_shadow,
+    RayQueue<int32> q_shadow,
+    WavefrontShadowRays shadow_rays,
     Vec4* sample_buffer,
     GPUScene scene,
     GBuffer g_buffer,
@@ -196,12 +197,11 @@ __KERNEL__ void Closest(
             Float mis_weight = PowerHeuristic(1, light_pdf, 1, bsdf_pdf);
 
             int32 shadow_ray_index = atomicAdd(q_shadow.count, 1);
-            WavefrontShadowRay* shadow_ray = &q_shadow.rays[shadow_ray_index];
-
-            shadow_ray->ray = Ray(isect.point, wi);
-            shadow_ray->visibility = visibility;
-            shadow_ray->Li = beta * mis_weight * Li * f_cos / light_pdf;
-            shadow_ray->pixel_index = pixel_index;
+            q_shadow.rays[shadow_ray_index] = shadow_ray_index;
+            shadow_rays.rays[shadow_ray_index] = Ray(isect.point, wi);
+            shadow_rays.visibilities[shadow_ray_index] = visibility;
+            shadow_rays.Lis[shadow_ray_index] = beta * mis_weight * Li * f_cos / light_pdf;
+            shadow_rays.pixel_indices[shadow_ray_index] = pixel_index;
         }
     }
 
@@ -239,17 +239,19 @@ __KERNEL__ void Closest(
 }
 
 // Trace shadow rays, add contribution if unoccluded
-__KERNEL__ void TraceShadowRay(WavefrontShadowRay* shadow_rays, int32 shadow_ray_count, Vec4* sample_buffer, GPUScene scene)
+__KERNEL__ void TraceShadowRay(
+    int32* shadow_queue, WavefrontShadowRays shadow_rays, int32 shadow_ray_count, Vec4* sample_buffer, GPUScene scene
+)
 {
     int32 index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= shadow_ray_count) return;
 
-    const WavefrontShadowRay& wf_shadow_ray = shadow_rays[index];
+    const int32 shadow_ray_index = shadow_queue[index];
 
-    if (!IntersectAny(&scene, wf_shadow_ray.ray, Ray::epsilon, wf_shadow_ray.visibility))
+    if (!IntersectAny(&scene, shadow_rays.rays[shadow_ray_index], Ray::epsilon, shadow_rays.visibilities[shadow_ray_index]))
     {
-        Vec4& L = sample_buffer[wf_shadow_ray.pixel_index];
-        AtomicAdd(&L, wf_shadow_ray.Li);
+        Vec4& L = sample_buffer[shadow_rays.pixel_indices[shadow_ray_index]];
+        AtomicAdd(&L, shadow_rays.Lis[shadow_ray_index]);
     }
 }
 

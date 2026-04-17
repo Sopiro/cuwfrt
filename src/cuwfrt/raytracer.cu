@@ -225,8 +225,8 @@ void RayTracer::RayTraceWavefront()
                 DynamicDispatcher<Materials>(i).Dispatch([&](auto* m) {
                     using MaterialType = std::remove_pointer_t<decltype(m)>;
                     Closest<MaterialType><<<blocks, threads, 0, ray_queue_streams[i]>>>(
-                        wf.closest.rays[i], num_closest_rays[i], wf.path_states, wf.next, wf.shadow, &sample_buffer[frame_index],
-                        gpu_res.scene, g_buffer[frame_index], bounce
+                        wf.closest.rays[i], num_closest_rays[i], wf.path_states, wf.next, wf.shadow, wf.shadow_rays,
+                        &sample_buffer[frame_index], gpu_res.scene, g_buffer[frame_index], bounce
                     );
                     cudaCheckLastError();
                 });
@@ -254,7 +254,7 @@ void RayTracer::RayTraceWavefront()
             const int32 threads = 128;
             int32 blocks = (num_shadow_rays + threads - 1) / threads;
             TraceShadowRay<<<blocks, threads, 0, streams[shadow_stream]>>>(
-                wf.shadow.rays, num_shadow_rays, &sample_buffer[frame_index], gpu_res.scene
+                wf.shadow.rays, wf.shadow_rays, num_shadow_rays, &sample_buffer[frame_index], gpu_res.scene
             );
             cudaCheckLastError();
         }
