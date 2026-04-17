@@ -236,6 +236,12 @@ __KERNEL__ void EstimateVariance(GBuffer g_buffer, HistoryBuffer h_buffer, Histo
         }
     }
 
+    if (sum_weights <= 0)
+    {
+        out_h_buffer.moments[index].z = 0;
+        return;
+    }
+
     sum_moments /= sum_weights;
 
     // Spatially estimated variance

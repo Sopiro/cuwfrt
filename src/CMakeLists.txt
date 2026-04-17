@@ -14,7 +14,7 @@ FetchContent_MakeAvailable(alzartak)
 FetchContent_Populate(
     tinyobj
     GIT_REPOSITORY "https://github.com/tinyobjloader/tinyobjloader.git"
-    GIT_TAG release
+    GIT_TAG 7dbc543d2107143ab43f32654b5ad79c7bc24899
 )
 
 # Include tinygltf
