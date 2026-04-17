@@ -21,7 +21,7 @@ __KERNEL__ void ClearBuffers(Vec4* sample_buffer, Vec4* accumulation_buffer, Poi
 }
 
 __KERNEL__ void ResetCounts(
-    int32* next_ray_count, RayQueues<WavefrontRay, Materials::count> queue_closest, int32* miss_ray_count, int32* shadow_ray_count
+    int32* next_ray_count, RayQueues<int32, Materials::count> queue_closest, int32* miss_ray_count, int32* shadow_ray_count
 )
 {
     if (threadIdx.x == 0 && blockIdx.x == 0)
@@ -40,7 +40,7 @@ __KERNEL__ void ResetCounts(
 
 // Generate primary rays for each pixel
 __KERNEL__ void GeneratePrimaryRays(
-    WavefrontRay* active_rays, Vec4* sample_buffer, Point2i res, Camera camera, GBuffer g_buffer, int32 seed
+    WavefrontPathStates path_states, int32* active_rays, Vec4* sample_buffer, Point2i res, Camera camera, GBuffer g_buffer, int32 seed
 )
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -49,21 +49,18 @@ __KERNEL__ void GeneratePrimaryRays(
 
     const int32 index = y * res.x + x;
 
-    // Initialize wavefront path states
-    WavefrontRay& wf_ray = active_rays[index];
-
     RNG rng(Hash(x, y, seed));
+    Ray ray;
 
     // Generate primary ray
-    camera.SampleRay(&wf_ray.ray, { x, y }, { rng.NextFloat(), rng.NextFloat() }, { rng.NextFloat(), rng.NextFloat() });
+    camera.SampleRay(&ray, { x, y }, { rng.NextFloat(), rng.NextFloat() }, { rng.NextFloat(), rng.NextFloat() });
 
-    wf_ray.rng = rng;
-    wf_ray.beta = Vec3(1);
-
-    wf_ray.last_bsdf_pdf = 0.0f;
-    wf_ray.is_specular = false;
-
-    wf_ray.pixel_index = index;
+    path_states.rngs[index] = rng;
+    path_states.rays[index] = ray;
+    path_states.betas[index] = Vec3(1);
+    path_states.last_bsdf_pdfs[index] = 0.0f;
+    path_states.specular_bounces[index] = 0;
+    active_rays[index] = index;
 
     sample_buffer[index] = Vec4(0);
 
@@ -74,57 +71,55 @@ __KERNEL__ void GeneratePrimaryRays(
 
 // Trace rays and find closest intersection
 __KERNEL__ void TraceRay(
-    WavefrontRay* active_rays,
+    WavefrontPathStates path_states,
+    int32* active_rays,
     int32 active_ray_count,
-    RayQueues<WavefrontRay, Materials::count> q_closest,
-    RayQueue<WavefrontMissRay> q_miss,
+    RayQueues<int32, Materials::count> q_closest,
+    RayQueue<int32> q_miss,
     GPUScene scene
 )
 {
     int32 index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= active_ray_count) return;
 
-    WavefrontRay& wf_ray = active_rays[index];
+    const int32 path_index = active_rays[index];
+    Ray& ray = path_states.rays[path_index];
+    Intersection& isect = path_states.isects[path_index];
 
-    bool found_intersection = Intersect(&wf_ray.isect, &scene, wf_ray.ray, Ray::epsilon, infinity);
+    bool found_intersection = Intersect(&isect, &scene, ray, Ray::epsilon, infinity);
     if (found_intersection)
     {
-        MaterialIndex mi = scene.material_indices[wf_ray.isect.prim];
+        MaterialIndex mi = scene.material_indices[isect.prim];
         const int32 ti = mi.type_index;
 
         int32 next_index = atomicAdd(q_closest.counts[ti], 1);
-        WavefrontRay* next_ray = &q_closest.rays[ti][next_index];
-
-        *next_ray = wf_ray;
+        q_closest.rays[ti][next_index] = path_index;
     }
     else
     {
         int32 next_index = atomicAdd(q_miss.count, 1);
-        WavefrontMissRay* miss_ray = &q_miss.rays[next_index];
-
-        miss_ray->pixel_index = wf_ray.pixel_index;
-        miss_ray->d = wf_ray.ray.d;
-        miss_ray->beta = wf_ray.beta;
+        q_miss.rays[next_index] = path_index;
     }
 }
 
-__KERNEL__ void Miss(WavefrontMissRay* miss_rays, int32 miss_ray_count, Vec4* sample_buffer)
+__KERNEL__ void Miss(int32* miss_rays, int32 miss_ray_count, WavefrontPathStates path_states, Vec4* sample_buffer)
 {
     int32 index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= miss_ray_count) return;
 
-    WavefrontMissRay& miss_ray = miss_rays[index];
+    const int32 path_index = miss_rays[index];
 
-    Vec4& L = sample_buffer[miss_ray.pixel_index];
-    AtomicAdd(&L, miss_ray.beta * SkyColor(miss_ray.d));
+    Vec4& L = sample_buffer[path_index];
+    AtomicAdd(&L, path_states.betas[path_index] * SkyColor(path_states.rays[path_index].d));
 }
 
 // Intersects closest, generate next bounce rays and shadow rays
 template <typename MaterialType>
 __KERNEL__ void Closest(
-    WavefrontRay* closest_rays,
+    int32* closest_rays,
     int32 closest_ray_count,
-    RayQueue<WavefrontRay> q_next,
+    WavefrontPathStates path_states,
+    RayQueue<int32> q_next,
     RayQueue<WavefrontShadowRay> q_shadow,
     Vec4* sample_buffer,
     GPUScene scene,
@@ -135,16 +130,17 @@ __KERNEL__ void Closest(
     int32 index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index >= closest_ray_count) return;
 
-    WavefrontRay& wf_ray = closest_rays[index];
-    int32 pixel_index = wf_ray.pixel_index;
+    const int32 path_index = closest_rays[index];
+    int32 pixel_index = path_index;
 
-    Ray& ray = wf_ray.ray;
-    Intersection& isect = wf_ray.isect;
+    Ray& ray = path_states.rays[path_index];
+    Intersection& isect = path_states.isects[path_index];
     Vec4& L = sample_buffer[pixel_index];
-    Vec3& beta = wf_ray.beta;
-    RNG& rng = wf_ray.rng;
-    bool& specular_bounce = wf_ray.is_specular;
-    Float& prev_bsdf_pdf = wf_ray.last_bsdf_pdf;
+    Vec3& beta = path_states.betas[path_index];
+    RNG& rng = path_states.rngs[path_index];
+    uint8& specular_bounce_flag = path_states.specular_bounces[path_index];
+    bool specular_bounce = specular_bounce_flag != 0;
+    Float& prev_bsdf_pdf = path_states.last_bsdf_pdfs[path_index];
 
     Vec3 wo = Normalize(-ray.d);
 
@@ -215,6 +211,7 @@ __KERNEL__ void Closest(
         return;
     }
     specular_bounce = ss.is_specular;
+    specular_bounce_flag = ss.is_specular ? 1 : 0;
 
     // Save bsdf pdf for MIS
     prev_bsdf_pdf = ss.pdf;
@@ -238,7 +235,7 @@ __KERNEL__ void Closest(
     ray.d = ss.wi;
 
     int32 new_index = atomicAdd(q_next.count, 1);
-    q_next.rays[new_index] = wf_ray;
+    q_next.rays[new_index] = path_index;
 }
 
 // Trace shadow rays, add contribution if unoccluded

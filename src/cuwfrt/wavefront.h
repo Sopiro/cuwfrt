@@ -23,11 +23,41 @@ struct WavefrontRay
     int32 pixel_index;
 };
 
-struct WavefrontMissRay
+struct WavefrontPathStates : CudaResource1D
 {
-    Vec3 d;
-    Vec3 beta;
-    int32 pixel_index;
+    // SoA-ed WavefrontRay struct
+    RNG* rngs = nullptr;
+    Ray* rays = nullptr;
+    Intersection* isects = nullptr;
+    Vec3* betas = nullptr;
+    Float* last_bsdf_pdfs = nullptr;
+    uint8* specular_bounces = nullptr;
+
+    void Init(int32 capacity)
+    {
+        cudaCheck(cudaMalloc(&rngs, capacity * sizeof(RNG)));
+        cudaCheck(cudaMalloc(&rays, capacity * sizeof(Ray)));
+        cudaCheck(cudaMalloc(&isects, capacity * sizeof(Intersection)));
+        cudaCheck(cudaMalloc(&betas, capacity * sizeof(Vec3)));
+        cudaCheck(cudaMalloc(&last_bsdf_pdfs, capacity * sizeof(Float)));
+        cudaCheck(cudaMalloc(&specular_bounces, capacity * sizeof(uint8)));
+    }
+
+    void Free()
+    {
+        cudaCheck(cudaFree(rngs));
+        cudaCheck(cudaFree(rays));
+        cudaCheck(cudaFree(isects));
+        cudaCheck(cudaFree(betas));
+        cudaCheck(cudaFree(last_bsdf_pdfs));
+        cudaCheck(cudaFree(specular_bounces));
+    }
+
+    void Resize(int32 capacity)
+    {
+        Free();
+        Init(capacity);
+    }
 };
 
 struct WavefrontShadowRay
@@ -108,17 +138,19 @@ struct WavefrontResources : CudaResource2D
 
     int32 ray_capacity;
 
-    RayQueue<WavefrontRay> active;
-    RayQueue<WavefrontRay> next;
-    RayQueues<WavefrontRay, closest_queue_count> closest;
+    WavefrontPathStates path_states;
+    RayQueue<int32> active;
+    RayQueue<int32> next;
+    RayQueues<int32, closest_queue_count> closest;
 
-    RayQueue<WavefrontMissRay> miss;
+    RayQueue<int32> miss;
     RayQueue<WavefrontShadowRay> shadow;
 
     void Init(Point2i res)
     {
         ray_capacity = res.x * res.y;
 
+        path_states.Init(ray_capacity);
         active.Init(ray_capacity);
         next.Init(ray_capacity);
         closest.Init(ray_capacity);
@@ -128,6 +160,7 @@ struct WavefrontResources : CudaResource2D
 
     void Free()
     {
+        path_states.Free();
         active.Free();
         next.Free();
         closest.Free();
@@ -139,6 +172,7 @@ struct WavefrontResources : CudaResource2D
     {
         ray_capacity = res.x * res.y;
 
+        path_states.Resize(ray_capacity);
         active.Resize(ray_capacity);
         next.Resize(ray_capacity);
         closest.Resize(ray_capacity);

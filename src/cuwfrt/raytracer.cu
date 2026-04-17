@@ -171,7 +171,7 @@ void RayTracer::RayTraceWavefront()
         const dim3 threads(16, 16);
         const dim3 blocks((res.x + threads.x - 1) / threads.x, (res.y + threads.y - 1) / threads.y);
         GeneratePrimaryRays<<<blocks, threads, 0, streams[trace_stream]>>>(
-            wf.active.rays, &sample_buffer[frame_index], res, *camera, g_buffer[frame_index], spp++
+            wf.path_states, wf.active.rays, &sample_buffer[frame_index], res, *camera, g_buffer[frame_index], spp++
         );
         cudaCheckLastError();
     }
@@ -186,7 +186,9 @@ void RayTracer::RayTraceWavefront()
         {
             const int32 threads = 128;
             int32 blocks = (num_active_rays + threads - 1) / threads;
-            TraceRay<<<blocks, threads, 0, streams[trace_stream]>>>(wf.active.rays, num_active_rays, wf.closest, wf.miss, gpu_res.scene);
+            TraceRay<<<blocks, threads, 0, streams[trace_stream]>>>(
+                wf.path_states, wf.active.rays, num_active_rays, wf.closest, wf.miss, gpu_res.scene
+            );
             cudaCheckLastError();
         }
 
@@ -203,7 +205,9 @@ void RayTracer::RayTraceWavefront()
         {
             const int32 threads = 128;
             int32 blocks = (num_miss_rays + threads - 1) / threads;
-            Miss<<<blocks, threads, 0, streams[trace_stream]>>>(wf.miss.rays, num_miss_rays, &sample_buffer[frame_index]);
+            Miss<<<blocks, threads, 0, streams[trace_stream]>>>(
+                wf.miss.rays, num_miss_rays, wf.path_states, &sample_buffer[frame_index]
+            );
             cudaCheckLastError();
         }
 
@@ -221,8 +225,8 @@ void RayTracer::RayTraceWavefront()
                 DynamicDispatcher<Materials>(i).Dispatch([&](auto* m) {
                     using MaterialType = std::remove_pointer_t<decltype(m)>;
                     Closest<MaterialType><<<blocks, threads, 0, ray_queue_streams[i]>>>(
-                        wf.closest.rays[i], num_closest_rays[i], wf.next, wf.shadow, &sample_buffer[frame_index], gpu_res.scene,
-                        g_buffer[frame_index], bounce
+                        wf.closest.rays[i], num_closest_rays[i], wf.path_states, wf.next, wf.shadow, &sample_buffer[frame_index],
+                        gpu_res.scene, g_buffer[frame_index], bounce
                     );
                     cudaCheckLastError();
                 });
